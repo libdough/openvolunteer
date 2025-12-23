@@ -27,4 +27,10 @@ class User(AbstractUser):
         return reverse("users:detail", kwargs={"username": self.username})
 
     def __str__(self):
-        return self.name
+        if self.username:
+            if self.email:
+                return f"{self.username} ({self.email})"
+            return self.username
+        if self.name:
+            return self.name
+        return f"{self.first_name} {self.last_name}"

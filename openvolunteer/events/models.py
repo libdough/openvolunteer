@@ -55,7 +55,10 @@ class Shift(models.Model):
     name = models.CharField(max_length=200, blank=True)
     starts_at = models.DateTimeField()
     ends_at = models.DateTimeField()
-    capacity = models.PositiveIntegerField(default=0)  # 0 => unlimited
+    capacity = models.PositiveIntegerField(
+        default=0,
+        help_text="Set to 0 for unlimited capacity",
+    )
 
     def __str__(self):
         return self.name

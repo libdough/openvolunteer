@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <h1>{{ event.title }}</h1>
+  <p>
+    {% include "components/datetime_range.html" with
+    start=event.starts_at
+    end=event.ends_at
+    %}
+  </p>
+  {% if event.location_name %}
+    <p>
+      <strong>Location:</strong>
+      <br />
+      {{ event.location_name }}
+      <br />
+      {{ event.location_address }}
+    </p>
+  {% endif %}
+  {% if event.description %}<p>{{ event.description }}</p>{% endif %}
+  <h2>Shifts</h2>
+  {% for shift in event.shifts.all %}
+    <div class="card">
+      <strong>{{ shift.name|default:"Shift" }}</strong>
+      <br />
+      {% include "components/datetime_range.html" with
+      start=shift.starts_at
+      end=shift.ends_at
+      %}
+      <br />
+      Capacity:
+      {% include "components/capacity.html" with capacity=shift.capacity %}
+      · Signups: {{ shift.signups.count }}
+      {% if user.is_authenticated %}
+        <div>
+          <a href="{% url 'events:shift_signup' shift.id %}">Sign up</a>
+        </div>
+      {% endif %}
+    </div>
+  {% empty %}
+    <p>No shifts defined.</p>
+  {% endfor %}
+{% endblock content %}

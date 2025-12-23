@@ -1,23 +1,42 @@
 # people/permissions.py
-from orgs.models import Membership
-
-from .models import PersonOrganization
 
 
 def user_can_view_person(user, person) -> bool:
     if not user.is_authenticated:
         return False
 
-    if user.is_superuser:
+    if user.is_staff or user.is_superuser:
         return True
 
-    user_org_ids = Membership.objects.filter(
-        user=user,
-        is_active=True,
-    ).values_list("org_id", flat=True)
-
-    return PersonOrganization.objects.filter(
-        person=person,
-        org_id__in=user_org_ids,
+    return person.org_links.filter(
+        org__memberships__user=user,
+        org__memberships__is_active=True,
         is_active=True,
     ).exists()
+
+
+def user_can_edit_person(user, person) -> bool:
+    if not user.is_authenticated:
+        return False
+
+    if user.is_staff or user.is_superuser:
+        return True
+
+    return person.org_links.filter(
+        org__memberships__user=user,
+        org__memberships__role__in=[
+            "owner",
+            "admin",
+            "organizer",
+        ],
+        org__memberships__is_active=True,
+        is_active=True,
+    ).exists()
+
+
+def user_can_create_person(user) -> bool:
+    if not user.is_authenticated:
+        return False
+
+    # Superusers / staff can always create
+    return user.is_staff or user.is_superuser

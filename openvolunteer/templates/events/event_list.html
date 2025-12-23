@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <h1>Events</h1>
+  {% for event in events %}
+    <div class="card">
+      <h3>
+        <a href="{% url 'events:event_detail' event.id %}">{{ event.title }}</a>
+      </h3>
+      <p>
+        {% include "components/datetime_range.html" with
+        start=event.starts_at
+        end=event.ends_at
+        %}
+        · {{ event.org.name }}
+        · {{ event.get_event_type_display }}
+      </p>
+      <p>{{ event.description|truncatewords:25 }}</p>
+      <strong>Shifts:</strong> {{ event.shifts.count }}
+    </div>
+  {% empty %}
+    <p>No upcoming events.</p>
+  {% endfor %}
+{% endblock content %}

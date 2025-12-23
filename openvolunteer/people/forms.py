@@ -20,9 +20,12 @@ class PersonForm(forms.ModelForm):
             "attributes",
         ]
         widgets = {
-            "attributes": forms.JSONField(
-                widget=forms.Textarea(attrs={"rows": 3}),
-                required=False,
+            "attributes": forms.Textarea(
+                attrs={
+                    "rows": 4,
+                    "class": "form-control",
+                    "placeholder": '{"support_level": "strong"}',
+                },
             ),
         }
 

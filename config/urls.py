@@ -25,6 +25,8 @@ urlpatterns = [
     # Your stuff: custom urls includes go here
     # ...
     # Media files
+    path("people/", include("openvolunteer.people.urls")),
+    path("events/", include("openvolunteer.events.urls")),
     *static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT),
 ]
 if settings.DEBUG:

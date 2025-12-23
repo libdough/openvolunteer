@@ -117,6 +117,19 @@ class PersonTag(models.Model):
             return f"{self.name} ({self.org.name})"
         return f"{self.name} (Global)"
 
+    @property
+    def color_hex(self):
+        mapping = {
+            "red": "#f44336",
+            "orange": "#ff9800",
+            "yellow": "#ffeb3b",
+            "green": "#4caf50",
+            "blue": "#2196f3",
+            "purple": "#9c27b0",
+            "grey": "#9e9e9e",
+        }
+        return mapping.get(self.color, "#9e9e9e")
+
 
 class PersonTagging(models.Model):
     """

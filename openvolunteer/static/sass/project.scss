@@ -34,3 +34,49 @@ $red: #b94a48;
   border-color: $dark-pink;
   color: $red;
 }
+
+.tag-pill {
+  display: inline-block;
+  padding: 0.25rem 0.5rem;
+  margin: 0.125rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: #fff;
+  border-radius: 0.25rem;
+  background-color: var(--tag-color, #6c757d);
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.ov-card {
+  border: 1px solid #dee2e6;
+  border-radius: 0.5rem;
+}
+
+.ov-section {
+  margin-bottom: 2rem;
+}
+
+.ov-label {
+  font-weight: 600;
+  margin-right: 0.25rem;
+}
+
+.ov-muted {
+  color: #6c757d;
+}
+
+.ov-avatar {
+  width: 72px;
+  height: 72px;
+  font-size: 28px;
+  border-radius: 50%;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  background-color: #6c757d; /* Bootstrap secondary */
+  color: #fff;
+  font-weight: 600;
+}
