@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+
+{% block title %}
+  People
+{% endblock title %}
+{% block content %}
+  <h1>People</h1>
+  <p>
+    <a href="{% url 'people:person_create' %}">➕ Add person</a>
+  </p>
+  {% if people %}
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Email</th>
+          <th>Phone</th>
+          <th>Organizations</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for person in people %}
+          <tr>
+            <td>
+              <a href="{% url 'people:person_detail' person_id=person.id %}">{{ person.full_name }}</a>
+            </td>
+            <td>{{ person.email|default:"—" }}</td>
+            <td>{{ person.phone|default:"—" }}</td>
+            <td>
+              {% if person.org_links.all %}
+                {% for link in person.org_links.all %}
+                  <span>{{ link.org.name }}</span>
+                  {% if not forloop.last %},{% endif %}
+                {% endfor %}
+              {% else %}
+                —
+              {% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p>No people available.</p>
+  {% endif %}
+{% endblock content %}

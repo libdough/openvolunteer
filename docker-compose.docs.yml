@@ -1,0 +1,17 @@
+services:
+  docs:
+    image: openvolunteer_local_docs
+    container_name: openvolunteer_local_docs
+    build:
+      context: .
+      dockerfile: ./compose/local/docs/Dockerfile
+    env_file:
+      - ./.envs/.local/.django
+    volumes:
+      - /app/.venv
+      - ./docs:/docs:z
+      - ./config:/app/config:z
+      - ./openvolunteer:/app/openvolunteer:z
+    ports:
+      - '9000:9000'
+    command: /start-docs

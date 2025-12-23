@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+
+{% block title %}
+  {{ person.full_name }}
+{% endblock title %}
+{% block content %}
+  <a href="{% url 'people:person_list' %}">← Back to people</a>
+  <h1>{{ person.full_name }}</h1>
+  <section>
+    <h2>Contact</h2>
+    <ul>
+      <li>
+        <strong>Email:</strong> {{ person.email|default:"—" }}
+      </li>
+      <li>
+        <strong>Phone:</strong> {{ person.phone|default:"—" }}
+      </li>
+    </ul>
+  </section>
+  <section>
+    <h2>Organizations</h2>
+    {% if person.org_links.all %}
+      <ul>
+        {% for link in person.org_links.all %}
+          <li>
+            {{ link.org.name }}
+            <small>({{ link.get_role_display }})</small>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p>This person is not associated with any organization.</p>
+    {% endif %}
+    {# Future action buttons #}
+    <p>
+      <em>Add / remove organization controls go here</em>
+    </p>
+  </section>
+  <section>
+    <h2>Tags</h2>
+    {% for link in person.org_links.all %}
+      <h3>{{ link.org.name }}</h3>
+      {% with org_tags=person.taggings.all|dictsort:"tag.name" %}
+        {% if org_tags %}
+          <ul>
+            {% for tagging in org_tags %}
+              <!-- {% if tagging.tag.org_id == link.org_id %} -->
+              <li>{{ tagging.tag.name }}</li>
+              <!-- {% endif %} -->
+            {% endfor %}
+          </ul>
+        {% else %}
+          <p>No tags</p>
+        {% endif %}
+      {% endwith %}
+    {% endfor %}
+  </section>
+  <section>
+    <h2>Address</h2>
+    {% if person.address_line1 %}
+      <address>
+        {{ person.address_line1 }}
+        <br />
+        {% if person.address_line2 %}
+          {{ person.address_line2 }}
+          <br />
+        {% endif %}
+        {{ person.city }}, {{ person.state }} {{ person.postal_code }}
+      </address>
+    {% else %}
+      <p>—</p>
+    {% endif %}
+  </section>
+  <section>
+    <h2>Attributes</h2>
+    {% if person.attributes %}
+      <pre>{{ person.attributes }}</pre>
+    {% else %}
+      <p>—</p>
+    {% endif %}
+  </section>
+  <hr />
+  <section>
+    <h2>Activity</h2>
+    <p>
+      Activity timeline will appear here
+      (calls, canvassing, events, notes),
+      filtered by organization context.
+    </p>
+  </section>
+{% endblock content %}
