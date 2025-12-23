@@ -13,6 +13,7 @@
       <thead>
         <tr>
           <th>Name</th>
+          <th>Discord</th>
           <th>Email</th>
           <th>Phone</th>
           <th>Organizations</th>
@@ -24,6 +25,7 @@
             <td>
               <a href="{% url 'people:person_detail' person_id=person.id %}">{{ person.full_name }}</a>
             </td>
+            <td>{{ person.discord|default:"—" }}</td>
             <td>{{ person.email|default:"—" }}</td>
             <td>{{ person.phone|default:"—" }}</td>
             <td>

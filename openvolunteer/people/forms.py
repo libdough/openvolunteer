@@ -9,6 +9,7 @@ class PersonForm(forms.ModelForm):
         model = Person
         fields = [
             "full_name",
+            "discord",
             "email",
             "phone",
             "address_line1",
