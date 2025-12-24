@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+
+{% block title %}
+  Assign People
+{% endblock title %}
+{% block content %}
+  <a href="{% url 'events:event_detail' shift.event.id %}"
+     class="text-muted mb-3 d-inline-block">← Back to event</a>
+  <h1 class="mb-4">
+    Assign People
+    <small class="text-muted">{{ shift.name|default:"Shift" }}</small>
+  </h1>
+  <form method="post">
+    {% csrf_token %}
+    <div class="card shadow-sm">
+      <div class="card-header">Select people</div>
+      <div class="card-body">
+        {% for person in people %}
+          <label class="d-flex align-items-center mb-2">
+            <input type="checkbox"
+                   name="people"
+                   value="{{ person.id }}"
+                   {% if person.id in assigned_ids %}checked{% endif %}
+                   class="me-2" />
+            {{ person.full_name }}
+            {% if person.email %}<span class="text-muted ms-2 small">{{ person.email }}</span>{% endif %}
+          </label>
+        {% empty %}
+          <p class="text-muted">No people available.</p>
+        {% endfor %}
+      </div>
+      <div class="card-footer text-end">
+        <button type="submit" class="btn btn-primary">Save Assignments</button>
+      </div>
+    </div>
+  </form>
+{% endblock content %}

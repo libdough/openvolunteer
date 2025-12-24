@@ -2,7 +2,7 @@ from django import forms
 
 from .models import Event
 from .models import Shift
-from .models import ShiftSignup
+from .models import ShiftAssignment
 
 
 class EventForm(forms.ModelForm):
@@ -74,10 +74,7 @@ class ShiftForm(forms.ModelForm):
         return cleaned
 
 
-class ShiftSignupForm(forms.ModelForm):
+class ShiftAssignmentForm(forms.ModelForm):
     class Meta:
-        model = ShiftSignup
-        fields = ["notes"]
-        widgets = {
-            "notes": forms.Textarea(attrs={"rows": 3}),
-        }
+        model = ShiftAssignment
+        fields = []

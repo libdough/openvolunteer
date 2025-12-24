@@ -1,43 +1,70 @@
 {% extends "base.html" %}
 
+{% block title %}
+  {{ event.title }}
+{% endblock title %}
 {% block content %}
-  <h1>{{ event.title }}</h1>
-  <p>
-    {% include "components/datetime_range.html" with
-    start=event.starts_at
-    end=event.ends_at
-    %}
-  </p>
+  <a href="{% url 'events:event_list' %}"
+     class="text-muted mb-3 d-inline-block">← Back to events</a>
+  <div class="d-flex justify-content-between align-items-start mb-4">
+    <div>
+      <h1 class="mb-1">{{ event.title }}</h1>
+      <div class="text-muted">
+        {% with start=event.starts_at end=event.ends_at %}
+          {% include "components/datetime_range.html" %}
+        {% endwith %}
+        · {{ event.org.name }}
+        · {{ event.get_event_type_display }}
+      </div>
+    </div>
+  </div>
   {% if event.location_name %}
-    <p>
-      <strong>Location:</strong>
-      <br />
-      {{ event.location_name }}
-      <br />
-      {{ event.location_address }}
-    </p>
+    <div class="card shadow-sm mb-4">
+      <div class="card-header">Location</div>
+      <div class="card-body small">
+        <strong>{{ event.location_name }}</strong>
+        {% if event.location_address %}<div class="text-muted">{{ event.location_address }}</div>{% endif %}
+      </div>
+    </div>
   {% endif %}
-  {% if event.description %}<p>{{ event.description }}</p>{% endif %}
-  <h2>Shifts</h2>
-  {% for shift in event.shifts.all %}
-    <div class="card">
-      <strong>{{ shift.name|default:"Shift" }}</strong>
-      <br />
-      {% include "components/datetime_range.html" with
-      start=shift.starts_at
-      end=shift.ends_at
-      %}
-      <br />
-      Capacity:
-      {% include "components/capacity.html" with capacity=shift.capacity %}
-      · Signups: {{ shift.signups.count }}
-      {% if user.is_authenticated %}
-        <div>
-          <a href="{% url 'events:shift_signup' shift.id %}">Sign up</a>
-        </div>
+  {% if event.description %}
+    <div class="card shadow-sm mb-4">
+      <div class="card-header">Description</div>
+      <div class="card-body">{{ event.description|linebreaks }}</div>
+    </div>
+  {% endif %}
+  <div class="card shadow-sm">
+    <div class="card-header d-flex justify-content-between align-items-center">
+      <span>Shifts</span>
+      <span class="badge bg-secondary">{{ page_obj.paginator.count }}</span>
+    </div>
+    <div class="card-body p-0">
+      {% if shifts %}
+        <ul class="list-group list-group-flush">
+          {% for shift in shifts %}
+            <li class="list-group-item">
+              <strong>{{ shift.name|default:"Shift" }}</strong>
+              <div class="text-muted small">
+                {% with start=shift.starts_at end=shift.ends_at %}
+                  {% include "components/datetime_range.html" %}
+                {% endwith %}
+              </div>
+              <div class="small mt-1">
+                Capacity:
+                {% include "components/capacity.html" with capacity=shift.capacity %}
+                · {{ shift.assigned_count }} signed up
+              </div>
+              {% if can_assign_people %}
+                <a href="{% url 'events:shift_assign_people' shift.id %}"
+                   class="btn btn-sm btn-outline-primary">Assign people</a>
+              {% endif %}
+            </li>
+          {% endfor %}
+        </ul>
+        {% include "components/pagination.html" %}
+      {% else %}
+        <div class="p-3 text-muted">No shifts defined.</div>
       {% endif %}
     </div>
-  {% empty %}
-    <p>No shifts defined.</p>
-  {% endfor %}
+  </div>
 {% endblock content %}

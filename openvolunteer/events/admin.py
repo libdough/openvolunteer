@@ -3,11 +3,11 @@ from django.contrib import admin
 
 from .models import Event
 from .models import Shift
-from .models import ShiftSignup
+from .models import ShiftAssignment
 
 
-class ShiftSignupInline(admin.TabularInline):
-    model = ShiftSignup
+class ShiftAssignmentInline(admin.TabularInline):
+    model = ShiftAssignment
     extra = 0
     autocomplete_fields = ["person"]
     fields = ("person", "checked_in_at", "notes")
@@ -58,7 +58,7 @@ class ShiftAdmin(admin.ModelAdmin):
     search_fields = ("name", "event__title")
     ordering = ("starts_at",)
 
-    inlines = [ShiftSignupInline]
+    inlines = [ShiftAssignmentInline]
 
     def get_queryset(self, request):
         qs = super().get_queryset(request)

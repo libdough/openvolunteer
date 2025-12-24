@@ -6,7 +6,6 @@ from django.conf import settings
 from django.db import models
 
 from openvolunteer.orgs.models import Organization
-from openvolunteer.people.models import Person
 
 
 class EventType(models.TextChoices):
@@ -63,21 +62,47 @@ class Shift(models.Model):
     def __str__(self):
         return self.name
 
+    @property
+    def assigned_count(self):
+        return self.assignments.count()
 
-class ShiftSignup(models.Model):
+    @property
+    def has_capacity(self):
+        if self.capacity == 0:
+            return True
+        return self.assigned_count < self.capacity
+
+
+class ShiftAssignment(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    shift = models.ForeignKey(Shift, on_delete=models.CASCADE, related_name="signups")
-    person = models.ForeignKey(
-        Person,
+
+    shift = models.ForeignKey(
+        "Shift",
         on_delete=models.CASCADE,
-        related_name="shift_signups",
+        related_name="assignments",
+    )
+    person = models.ForeignKey(
+        "people.Person",
+        on_delete=models.CASCADE,
+        related_name="shift_assignments",
+    )
+
+    assigned_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
     )
 
     checked_in_at = models.DateTimeField(blank=True, null=True)
-    notes = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         unique_together = [("shift", "person")]
+        indexes = [
+            models.Index(fields=["shift"]),
+            models.Index(fields=["person"]),
+        ]
 
     def __str__(self):
-        return f"{self.person.full_name} ({self.shift.name})"
+        return f"{self.person.full_name} → {self.shift}"

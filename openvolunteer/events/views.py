@@ -1,65 +1,117 @@
 #!/usr/bin/env python3
-from django.contrib import messages
+import uuid
+
 from django.contrib.auth.decorators import login_required
+from django.http import Http404
 from django.shortcuts import get_object_or_404
 from django.shortcuts import redirect
 from django.shortcuts import render
-from django.views.generic import DetailView
-from django.views.generic import ListView
 
-from .forms import ShiftSignupForm
+from openvolunteer.core.pagination import paginate
+from openvolunteer.people.models import Person
+
 from .models import Event
 from .models import Shift
-from .models import ShiftSignup
-
-
-class EventListView(ListView):
-    model = Event
-    template_name = "events/event_list.html"
-    context_object_name = "events"
-    ordering = ("starts_at",)
-
-    def get_queryset(self):
-        qs = super().get_queryset()
-        return qs.select_related("org").prefetch_related("shifts")
-
-
-class EventDetailView(DetailView):
-    model = Event
-    template_name = "events/event_detail.html"
-    context_object_name = "event"
-
-    def get_queryset(self):
-        return (
-            super()
-            .get_queryset()
-            .select_related("org")
-            .prefetch_related("shifts__signups", "shifts__signups__person")
-        )
+from .models import ShiftAssignment
+from .permissions import user_can_assign_people
 
 
 @login_required
-def shift_signup(request, shift_id):
-    shift = get_object_or_404(Shift, id=shift_id)
+def event_list(request):
+    events_qs = (
+        Event.objects.select_related("org")
+        .prefetch_related("shifts")
+        .order_by("starts_at")
+    )
 
-    if request.method == "POST":
-        form = ShiftSignupForm(request.POST)
-        if form.is_valid():
-            ShiftSignup.objects.get_or_create(
-                shift=shift,
-                person=request.user.person,
-                defaults=form.cleaned_data,
-            )
-            messages.success(request, "You are signed up!")
-            return redirect("events:event_detail", pk=shift.event_id)
-    else:
-        form = ShiftSignupForm()
+    pagination = paginate(request, events_qs, per_page=20)
 
     return render(
         request,
-        "events/shift_signup.html",
+        "events/event_list.html",
+        {
+            "events": pagination["page_obj"],
+            **pagination,
+        },
+    )
+
+
+@login_required
+def event_detail(request, event_id):
+    event = get_object_or_404(
+        Event.objects.select_related("org"),
+        id=event_id,
+    )
+
+    shifts_qs = event.shifts.order_by("starts_at")
+
+    pagination = paginate(request, shifts_qs, per_page=20)
+
+    return render(
+        request,
+        "events/event_detail.html",
+        {
+            "can_assign_people": user_can_assign_people(request.user, event),
+            "event": event,
+            "shifts": pagination["page_obj"],
+            **pagination,
+        },
+    )
+
+
+@login_required
+def shift_assign_people(request, shift_id):
+    shift = get_object_or_404(
+        Shift.objects.select_related("event__org"),
+        id=shift_id,
+    )
+
+    if not user_can_assign_people(request.user, shift.event):
+        raise Http404
+
+    # People already in org
+    people_qs = Person.objects.filter(
+        org_links__org=shift.event.org,
+    ).distinct()
+
+    assigned_ids = set(
+        shift.assignments.values_list("person_id", flat=True),
+    )
+
+    if request.method == "POST":
+        person_ids = request.POST.getlist("people")
+
+        # diff-based update
+        to_add = set(person_ids) - assigned_ids
+        to_remove = assigned_ids - set(map(uuid.UUID, person_ids))
+
+        ShiftAssignment.objects.filter(
+            shift=shift,
+            person_id__in=to_remove,
+        ).delete()
+
+        ShiftAssignment.objects.bulk_create(
+            [
+                ShiftAssignment(
+                    shift=shift,
+                    person_id=pid,
+                    assigned_by=request.user,
+                )
+                for pid in to_add
+            ],
+            update_conflicts=True,
+            unique_fields=["shift", "person"],
+            update_fields=["assigned_by"],
+        )
+
+        return redirect("events:event_detail", shift.event.id)
+
+    return render(
+        request,
+        "events/shift_assign.html",
         {
             "shift": shift,
-            "form": form,
+            "people": people_qs,
+            "assigned_ids": assigned_ids,
         },
     )

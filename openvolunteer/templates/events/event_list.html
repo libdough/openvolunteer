@@ -1,24 +1,35 @@
 {% extends "base.html" %}
 
+{% block title %}
+  Events
+{% endblock title %}
 {% block content %}
-  <h1>Events</h1>
-  {% for event in events %}
-    <div class="card">
-      <h3>
-        <a href="{% url 'events:event_detail' event.id %}">{{ event.title }}</a>
-      </h3>
-      <p>
-        {% include "components/datetime_range.html" with
-        start=event.starts_at
-        end=event.ends_at
-        %}
-        · {{ event.org.name }}
-        · {{ event.get_event_type_display }}
-      </p>
-      <p>{{ event.description|truncatewords:25 }}</p>
-      <strong>Shifts:</strong> {{ event.shifts.count }}
+  <h1 class="mb-4">Events</h1>
+  {% if events %}
+    <div class="row g-3">
+      {% for event in events %}
+        <div class="col-12">
+          <div class="card shadow-sm">
+            <div class="card-body">
+              <h5 class="mb-1">
+                <a href="{% url 'events:event_detail' event.id %}">{{ event.title }}</a>
+              </h5>
+              <div class="text-muted small mb-2">
+                {% with start=event.starts_at end=event.ends_at %}
+                  {% include "components/datetime_range.html" %}
+                {% endwith %}
+                · {{ event.org.name }}
+                · {{ event.get_event_type_display }}
+              </div>
+              {% if event.description %}<p class="mb-2">{{ event.description|truncatewords:25 }}</p>{% endif %}
+              <span class="badge bg-secondary">{{ event.shifts.count }} shifts</span>
+            </div>
+          </div>
+        </div>
+      {% endfor %}
     </div>
-  {% empty %}
-    <p>No upcoming events.</p>
-  {% endfor %}
+    {% include "components/pagination.html" %}
+  {% else %}
+    <p class="text-muted">No upcoming events.</p>
+  {% endif %}
 {% endblock content %}
