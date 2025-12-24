@@ -80,3 +80,15 @@ $red: #b94a48;
   color: #fff;
   font-weight: 600;
 }
+
+.org-avatar {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background-color: var(--bs-secondary);
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+}

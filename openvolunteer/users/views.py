@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
+from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.messages.views import SuccessMessageMixin
+from django.db.models import Q
 from django.db.models import QuerySet
+from django.http import JsonResponse
 from django.urls import reverse
 from django.utils.translation import gettext_lazy as _
 from django.views.generic import DetailView
@@ -45,3 +48,40 @@ class UserRedirectView(LoginRequiredMixin, RedirectView):
 
 
 user_redirect_view = UserRedirectView.as_view()
+
+MIN_SEARCH_QUERY_LEN = 2
+
+
+@login_required
+def user_search(request):
+    """
+    Search users by name / email / username.
+    Intended for admin/org-admin use.
+    """
+    # TODO: limit user search permissions
+    q = request.GET.get("q", "").strip()
+
+    if len(q) < MIN_SEARCH_QUERY_LEN:
+        return JsonResponse({"results": []})
+
+    users = User.objects.filter(
+        Q(id__icontains=q) | Q(email__icontains=q) | Q(username__icontains=q),
+        # | Q(first_name__icontains=q)
+        # | Q(last_name__icontains=q)
+    ).order_by("id")[:10]
+
+    return JsonResponse(
+        {
+            "results": [
+                {
+                    "id": str(user.id),
+                    "email": user.email
+                    if (request.user.is_staff or request.is_superuser)
+                    else "<hidden>",
+                    "username": user.username,
+                    "name": user.get_full_name() or user.username,
+                }
+                for user in users
+            ],
+        },
+    )

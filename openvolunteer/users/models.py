@@ -31,6 +31,4 @@ class User(AbstractUser):
             if self.email:
                 return f"{self.username} ({self.email})"
             return self.username
-        if self.name:
-            return self.name
-        return f"{self.first_name} {self.last_name}"
+        return "Unknown"

@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+
+{% block title %}
+  {% if org %}
+    Edit Organization
+  {% else %}
+    Create Organization
+  {% endif %}
+{% endblock title %}
+{% block content %}
+  <a href="{% if org %}{% url 'orgs:org_detail' slug=org.slug %}{% else %}{% url 'orgs:org_list' %}{% endif %}"
+     class="text-muted mb-3 d-inline-block">← Back</a>
+  <h1 class="mb-4">
+    {% if org %}
+      Edit Organization
+    {% else %}
+      Create Organization
+    {% endif %}
+  </h1>
+  <form method="post" class="card shadow-sm">
+    {% csrf_token %}
+    <div class="card-body">
+      {{ form.non_field_errors }}
+      <div class="mb-3">
+        {{ form.name.label_tag }}
+        {{ form.name }}
+        {{ form.name.errors }}
+      </div>
+      <div class="mb-3">
+        {{ form.slug.label_tag }}
+        {{ form.slug }}
+        {{ form.slug.errors }}
+      </div>
+    </div>
+    <div class="card-footer d-flex justify-content-end">
+      <button type="submit" class="btn btn-primary">
+        {% if org %}
+          Save Changes
+        {% else %}
+          Create Organization
+        {% endif %}
+      </button>
+    </div>
+  </form>
+{% endblock content %}

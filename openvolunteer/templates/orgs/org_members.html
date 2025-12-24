@@ -1,0 +1,130 @@
+{% extends "base.html" %}
+
+{% block title %}
+  Members · {{ org.name }}
+{% endblock title %}
+{% block content %}
+  <a href="{% url 'orgs:org_detail' slug=org.slug %}"
+     class="text-muted mb-3 d-inline-block">← Back to organization</a>
+  <h1 class="mb-4">Members</h1>
+  <!-- Add member -->
+  <div class="card shadow-sm mb-4">
+    <div class="card-header">Add Member</div>
+    <div class="card-body">
+      <form method="post"
+            action="{% url 'orgs:org_members' slug=org.slug %}"
+            class="row g-3 align-items-end">
+        {% csrf_token %}
+        <div class="col-md-6">
+          <label class="form-label">User</label>
+          <input type="text"
+                 id="user-search"
+                 class="form-control"
+                 placeholder="Search name, email, or username"
+                 autocomplete="off" />
+          <input type="hidden" name="user_id" id="user-id-input" />
+          <div id="user-search-results" class="list-group position-absolute w-100"></div>
+        </div>
+        <div class="col-md-4">
+          {{ form.role.label_tag }}
+          {{ form.role }}
+        </div>
+        <div class="col-md-2">
+          <button class="btn btn-primary w-100">Add</button>
+        </div>
+      </form>
+    </div>
+  </div>
+  <!-- Members list inline_javascript-->
+  <div class="card shadow-sm">
+    <div class="card-header">Current Members</div>
+    <div class="card-body p-0">
+      <table class="table mb-0">
+        <thead>
+          <tr>
+            <th>User</th>
+            <th>Email</th>
+            <th>Role</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for member in members %}
+            <tr>
+              <td>{{ member.user.username }}</td>
+              <td>{{ member.user.email }}</td>
+              <td>
+                <form method="post"
+                      action="{% url 'orgs:org_member_update' slug=org.slug member_id=member.id %}">
+                  {% csrf_token %}
+                  <select name="role"
+                          class="form-select form-select-sm"
+                          onchange="this.form.submit()">
+                    {% for value, label in role_choices %}
+                      <option value="{{ value }}"{% if member.role == value %} selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                  </select>
+                </form>
+              </td>
+              <td class="text-end">
+                <form method="post"
+                      action="{% url 'orgs:org_member_remove' slug=org.slug member_id=member.id %}"
+                      onsubmit="return confirm('Remove this member?');">
+                  {% csrf_token %}
+                  <button class="btn btn-sm btn-outline-danger">Remove</button>
+                </form>
+              </td>
+            </tr>
+          {% empty %}
+            <tr>
+              <td colspan="4" class="text-muted text-center py-4">No members yet</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+{% endblock content %}
+{% block inline_javascript %}
+  <script>
+    (() => {
+      const input = document.getElementById("user-search");
+      const results = document.getElementById("user-search-results");
+      const hidden = document.getElementById("user-id-input");
+
+      let controller;
+
+      input.addEventListener("input", async () => {
+        const q = input.value.trim();
+        hidden.value = "";
+        results.innerHTML = "";
+
+        if (q.length < 2) return;
+
+        if (controller) controller.abort();
+        controller = new AbortController();
+
+        const res = await fetch(`/users/api/search/?q=${encodeURIComponent(q)}`, {
+          signal: controller.signal,
+        });
+
+        if (!res.ok) return;
+
+        const data = await res.json();
+
+        data.results.forEach(user => {
+          const item = document.createElement("button");
+          item.type = "button";
+          item.className = "list-group-item list-group-item-action";
+          item.textContent = `${user.username} (${user.email})`;
+          item.onclick = () => {
+            input.value = `${user.username} (${user.email})`;
+            hidden.value = user.id;
+            results.innerHTML = "";
+          };
+          results.appendChild(item);
+        });
+      });
+    })();
+  </script>
+{% endblock inline_javascript %}

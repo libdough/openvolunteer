@@ -74,21 +74,23 @@
       <!-- Organizations -->
       <div class="card ov-card shadow-sm mb-4">
         <div class="card-header d-flex justify-content-between">
-          <span>Organizations</span>
-          <small class="ov-muted">Memberships</small>
+          <span>Org Memberships</span>
         </div>
-        <div class="card-body">
+        <div class="card-body p-0">
           {% if person.org_links.all %}
             <ul class="list-group list-group-flush">
               {% for link in person.org_links.all %}
-                <li class="list-group-item d-flex justify-content-between">
-                  <span>{{ link.org.name }}</span>
-                  <span class="badge bg-secondary">{{ link.get_role_display }}</span>
+                <li class="list-group-item">
+                  <a href="{% url 'orgs:org_detail' slug=link.org.slug %}"
+                     class="d-flex justify-content-between align-items-center text-decoration-none">
+                    <span class="fw-medium">{{ link.org.name }}</span>
+                    <span class="text-muted small">View →</span>
+                  </a>
                 </li>
               {% endfor %}
             </ul>
           {% else %}
-            <p class="ov-muted mb-0">This person is not associated with any organization.</p>
+            <div class="p-3 ov-muted">This person is not associated with any organization.</div>
           {% endif %}
         </div>
       </div>

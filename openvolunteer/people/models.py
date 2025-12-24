@@ -37,13 +37,6 @@ class Person(models.Model):
         return self.full_name
 
 
-class PersonOrganizationRole(models.TextChoices):
-    MEMBER = "member", "Member"
-    VOLUNTEER = "volunteer", "Volunteer"
-    LEAD = "lead", "Lead"
-    STAFF = "staff", "Staff"
-
-
 class PersonOrganization(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
 
@@ -58,26 +51,20 @@ class PersonOrganization(models.Model):
         related_name="people_links",
     )
 
-    role = models.CharField(
-        max_length=20,
-        choices=PersonOrganizationRole,
-        default=PersonOrganizationRole.VOLUNTEER,
-    )
-
     is_active = models.BooleanField(default=True)
     joined_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         unique_together = [("person", "org")]
         indexes = [
-            models.Index(fields=["org", "role"]),
+            models.Index(fields=["org"]),
             models.Index(fields=["person", "org"]),
         ]
         verbose_name = "Org Membership"
         verbose_name_plural = "Org Memberships"
 
     def __str__(self):
-        return f"{self.org.name} ({self.role})"
+        return f"{self.person.full_name} <-> {self.org.name}"
 
 
 class PersonTag(models.Model):

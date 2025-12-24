@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+
+{% block title %}
+  Organizations
+{% endblock title %}
+{% block content %}
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>Organizations</h1>
+    {% if can_create_org %}
+      <a href="{% url 'orgs:org_create' %}" class="btn btn-primary">➕ New Organization</a>
+    {% endif %}
+  </div>
+  {% if orgs %}
+    <div class="row g-3">
+      {% for org in orgs %}
+        <div class="col-md-6 col-lg-4">
+          <div class="card shadow-sm h-100">
+            <div class="card-body">
+              <h5 class="card-title mb-1">
+                <a href="{% url 'orgs:org_detail' slug=org.slug %}">{{ org.name }}</a>
+              </h5>
+              <div class="text-muted small">{{ org.memberships.count }} member{{ org.memberships.count|pluralize }}</div>
+              <div class="text-muted small">{{ org.people_count }} people{{ org.people_count|pluralize }}</div>
+            </div>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <p class="text-muted">You are not a member of any organizations.</p>
+  {% endif %}
+{% endblock content %}

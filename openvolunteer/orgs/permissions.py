@@ -2,40 +2,50 @@ from .models import Membership
 from .models import OrgRole
 
 
-def user_is_org_member(user, org) -> bool:
+def _membership(user, org):
     return Membership.objects.filter(
         user=user,
         org=org,
         is_active=True,
-    ).exists()
+    ).first()
 
 
-def user_has_org_role(user, org, roles) -> bool:
-    return Membership.objects.filter(
-        user=user,
-        org=org,
-        role__in=roles,
-        is_active=True,
-    ).exists()
+def user_can_view_org(user, org):
+    if user.is_staff or user.is_superuser:
+        return True
+    return _membership(user, org) is not None
 
 
-def user_can_view_org(user, org) -> bool:
+def user_can_edit_org(user, org):
+    if user.is_staff or user.is_superuser:
+        return True
+    m = _membership(user, org)
+    return m and m.role in {OrgRole.OWNER, OrgRole.ADMIN}
+
+
+def user_can_create_org(user):
+    if not user.is_authenticated:
+        return False
+    return user.is_staff or user.is_superuser
+
+
+def user_can_manage_members(user, org) -> bool:
+    if user.is_superuser:
+        return True
+
+    if not user.is_authenticated:
+        return False
+
+    m = _membership(user, org)
+    return m and m.role in {OrgRole.OWNER, OrgRole.ADMIN}
+
+
+def user_can_manage_people(user, org) -> bool:
+    if not user.is_authenticated:
+        return False
+
     if user.is_staff or user.is_superuser:
         return True
 
-    return user_is_org_member(user, org)
-
-
-def user_can_edit_org_data(user, org) -> bool:
-    if user.is_staff or user.is_superuser:
-        return True
-
-    return user_has_org_role(
-        user,
-        org,
-        roles=[
-            OrgRole.OWNER,
-            OrgRole.ADMIN,
-            OrgRole.ORGANIZER,
-        ],
-    )
+    m = _membership(user, org)
+    return m and m.role in {OrgRole.OWNER, OrgRole.ADMIN, OrgRole.ORGANIZER}
