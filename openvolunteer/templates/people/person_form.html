@@ -81,6 +81,54 @@
         </div>
       </div>
     </div>
+    <!-- TAGS -->
+    <div class="col-12">
+      <div class="card shadow-sm">
+        <div class="card-header">
+          <strong>Tags</strong>
+        </div>
+        <div class="card-body">
+          <label class="form-label">Tags</label>
+          <div>
+            {% for tag in form.fields.tags.queryset %}
+              <label class="ov-tag-toggle">
+                <input type="checkbox"
+                       name="tags"
+                       value="{{ tag.id }}"
+                       {% if tag.id in selected_tag_ids %}checked{% endif %} />
+                <span class="tag-pill" style="--tag-color: {{ tag.color_hex }};">{{ tag.name }}</span>
+              </label>
+            {% endfor %}
+          </div>
+          {{ form.tags.errors }}
+          <div class="form-text mt-2">Click tags to add or remove them from this person.</div>
+        </div>
+      </div>
+    </div>
+    <!-- ORGANIZATIONS -->
+    <div class="col-12">
+      <div class="card shadow-sm">
+        <div class="card-header">
+          <strong>Organizations</strong>
+        </div>
+        <div class="card-body">
+          <label class="form-label">Organizations</label>
+          <div>
+            {% for org in form.fields.organizations.queryset %}
+              <label class="ov-tag-toggle">
+                <input type="checkbox"
+                       name="organizations"
+                       value="{{ org.id }}"
+                       {% if org.id in selected_org_ids %}checked{% endif %} />
+                <span class="ov-tag ov-tag-org">{{ org.name }}</span>
+              </label>
+            {% endfor %}
+          </div>
+          {{ form.organizations.errors }}
+          <div class="form-text mt-2">Click organizations to add or remove this person.</div>
+        </div>
+      </div>
+    </div>
     <!-- ATTRIBUTES -->
     <div class="col-12">
       <div class="card shadow-sm">

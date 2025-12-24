@@ -35,6 +35,15 @@ $red: #b94a48;
   color: $red;
 }
 
+.tag-pill-toggle {
+  display: inline-block;
+  margin: 2px;
+}
+
+.tag-pill-toggle input {
+  display: none;
+}
+
 .tag-pill {
   display: inline-block;
   padding: 0.25rem 0.5rem;
@@ -46,6 +55,11 @@ $red: #b94a48;
   background-color: var(--tag-color, #6c757d);
   line-height: 1;
   white-space: nowrap;
+}
+
+.tag-pill-toggle input:checked + .tag-pill {
+  opacity: 1;
+  transform: scale(1.03);
 }
 
 .ov-card {

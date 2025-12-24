@@ -28,31 +28,23 @@ from .permissions import user_can_view_org
 @login_required
 def org_list(request):
     if request.user.is_staff or request.user.is_superuser:
-        orgs = (
-            Organization.objects.all()
-            .annotate(
-                people_count=Count(
-                    "people_links",
-                    filter=Q(people_links__is_active=True),
-                    distinct=True,
-                ),
-            )
-            .order_by("id")
-        )
+        orgs = Organization.objects.all()
     else:
-        memberships = (
-            Membership.objects.filter(user=request.user, is_active=True)
-            .select_related("org")
-            .annotate(
-                people_count=Count(
-                    "people_links",
-                    filter=Q(people_links__is_active=True),
-                    distinct=True,
-                ),
-            )
+        orgs = Organization.objects.filter(
+            memberships__user=request.user,
+            memberships__is_active=True,
         )
 
-        orgs = [m.org for m in memberships]
+    orgs = (
+        orgs.distinct()
+        .annotate(
+            people_count=Count(
+                "people_links",
+                distinct=True,
+            ),
+        )
+        .order_by("name")
+    )
 
     return render(
         request,
