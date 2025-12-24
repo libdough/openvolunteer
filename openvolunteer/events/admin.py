@@ -10,7 +10,7 @@ class ShiftAssignmentInline(admin.TabularInline):
     model = ShiftAssignment
     extra = 0
     autocomplete_fields = ["person"]
-    fields = ("person", "checked_in_at", "notes")
+    fields = ("person", "checked_in_at")
     readonly_fields = ("checked_in_at",)
     show_change_link = True
 
@@ -40,7 +40,7 @@ class ShiftInline(admin.TabularInline):
 
     @admin.display(description="Signups")
     def signup_count(self, obj):
-        return obj.signups.count()
+        return obj.assignments.count()
 
 
 @admin.register(Shift)
@@ -62,7 +62,7 @@ class ShiftAdmin(admin.ModelAdmin):
 
     def get_queryset(self, request):
         qs = super().get_queryset(request)
-        return qs.select_related("event").prefetch_related("signups")
+        return qs.select_related("event").prefetch_related("assignments")
 
     @admin.display(description="Capacity")
     def capacity_display(self, obj):
@@ -70,7 +70,7 @@ class ShiftAdmin(admin.ModelAdmin):
 
     @admin.display(description="Signups")
     def signup_count(self, obj):
-        return obj.signups.count()
+        return obj.assignments.count()
 
 
 @admin.register(Event)
