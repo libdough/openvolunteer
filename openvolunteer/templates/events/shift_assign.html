@@ -18,7 +18,7 @@
         {% for person in people %}
           <label class="d-flex align-items-center mb-2">
             <input type="checkbox"
-                   name="people"
+                   name="all_people"
                    value="{{ person.id }}"
                    {% if person.id in assigned_ids %}checked{% endif %}
                    class="me-2" />

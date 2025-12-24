@@ -79,11 +79,15 @@ def shift_assign_people(request, shift_id):
     )
 
     if request.method == "POST":
-        person_ids = request.POST.getlist("people")
+        all_person_ids = request.POST.getlist("all_people")
+        add_person_ids = request.POST.getlist("add_people")
+        remove_person_ids = request.POST.getlist("remove_people")
 
         # diff-based update
-        to_add = set(person_ids) - assigned_ids
-        to_remove = assigned_ids - set(map(uuid.UUID, person_ids))
+        to_add = (set(all_person_ids) - assigned_ids) | set(add_person_ids)
+        to_remove = (assigned_ids - set(map(uuid.UUID, all_person_ids))) | set(
+            remove_person_ids,
+        )
 
         ShiftAssignment.objects.filter(
             shift=shift,
