@@ -7,6 +7,7 @@ from django.shortcuts import get_object_or_404
 from django.shortcuts import redirect
 from django.shortcuts import render
 
+from openvolunteer.core.pagination import paginate
 from openvolunteer.people.models import PersonOrganization
 from openvolunteer.users.models import User
 
@@ -190,6 +191,8 @@ def org_members(request, slug):
         raise ValueError(form.errors)
     form = AddMemberForm()
 
+    pagination = paginate(request, members, per_page=20)
+
     role_choices = OrgRole.choices
 
     return render(
@@ -197,7 +200,8 @@ def org_members(request, slug):
         "orgs/org_members.html",
         {
             "org": org,
-            "members": members,
+            "members": pagination["page_obj"],
+            **pagination,
             "role_choices": role_choices,
             "form": form,
         },
@@ -266,12 +270,15 @@ def org_people(request, slug):
     else:
         form = AddPersonToOrgForm(org=org)
 
+    pagination = paginate(request, people_links, per_page=20)
+
     return render(
         request,
         "orgs/org_people.html",
         {
             "org": org,
-            "people_links": people_links,
+            "people_links": pagination["page_obj"],
             "form": form,
+            **pagination,
         },
     )

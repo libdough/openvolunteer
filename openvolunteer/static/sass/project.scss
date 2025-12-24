@@ -92,3 +92,12 @@ $red: #b94a48;
   justify-content: center;
   font-weight: 600;
 }
+
+.ov-pagination .page-link {
+  border-radius: 6px;
+}
+
+.ov-pagination .page-item.active .page-link {
+  background-color: var(--bs-primary);
+  border-color: var(--bs-primary);
+}

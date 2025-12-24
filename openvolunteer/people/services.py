@@ -6,9 +6,8 @@ from .models import PersonTagging
 
 
 @transaction.atomic
-def create_person(*, org, data: dict) -> Person:
+def create_person(*, data: dict) -> Person:
     return Person.objects.create(
-        org=org,
         **data,
     )
 

@@ -5,6 +5,7 @@ from django.shortcuts import get_object_or_404
 from django.shortcuts import redirect
 from django.shortcuts import render
 
+from openvolunteer.core.pagination import paginate
 from openvolunteer.orgs.models import Membership
 
 from .forms import PersonForm
@@ -35,12 +36,15 @@ def person_list(request):
             .order_by("full_name")
         )
 
+    pagination = paginate(request, people, per_page=20)
+
     return render(
         request,
         "people/person_list.html",
         {
-            "people": people,
             "can_edit": user_can_create_person(request.user),
+            "people": pagination["page_obj"],
+            **pagination,
         },
     )
 
