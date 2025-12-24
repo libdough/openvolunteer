@@ -56,6 +56,15 @@
                 </li>
                 {% if request.user.is_authenticated %}
                   <li class="nav-item">
+                    <a class="nav-link" href="{% url 'people:person_list' %}">{% translate "People" %}</a>
+                  </li>
+                  <li class="nav-item">
+                    <a class="nav-link" href="{% url 'events:event_list' %}">{% translate "Events" %}</a>
+                  </li>
+                  <li class="nav-item">
+                    <a class="nav-link" href="{% url 'orgs:org_list' %}">{% translate "Orgs" %}</a>
+                  </li>
+                  <li class="nav-item">
                     <a class="nav-link"
                        href="{% url 'users:detail' request.user.username %}">{% translate "My Profile" %}</a>
                   </li>
