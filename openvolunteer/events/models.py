@@ -16,6 +16,12 @@ class EventType(models.TextChoices):
     OTHER = "other", "Other"
 
 
+class EventStatus(models.TextChoices):
+    DRAFT = "draft", "Draft"
+    SCHEDULED = "scheduled", "Scheduled"
+    FINISHED = "finished", "Finished"
+
+
 class Event(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     org = models.ForeignKey(
@@ -24,6 +30,11 @@ class Event(models.Model):
         related_name="events",
     )
     title = models.CharField(max_length=200)
+    event_status = models.CharField(
+        max_length=20,
+        choices=EventStatus,
+        default=EventStatus.DRAFT,
+    )
     event_type = models.CharField(
         max_length=20,
         choices=EventType,
@@ -36,6 +47,12 @@ class Event(models.Model):
     location_address = models.CharField(max_length=300, blank=True)
 
     description = models.TextField(blank=True)
+    owned_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name="events_owned",
+    )
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,

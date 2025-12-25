@@ -2,8 +2,24 @@
 from django.contrib import admin
 
 from .models import Event
+from .models import EventStatus
 from .models import Shift
 from .models import ShiftAssignment
+
+
+@admin.action(description="Mark selected events as Draft")
+def make_draft(modeladmin, request, queryset):
+    queryset.update(event_status=EventStatus.DRAFT)
+
+
+@admin.action(description="Mark selected events as Scheduled")
+def make_scheduled(modeladmin, request, queryset):
+    queryset.update(event_status=EventStatus.SCHEDULED)
+
+
+@admin.action(description="Mark selected events as Finished")
+def make_finished(modeladmin, request, queryset):
+    queryset.update(event_status=EventStatus.FINISHED)
 
 
 class ShiftAssignmentInline(admin.TabularInline):
@@ -78,25 +94,31 @@ class EventAdmin(admin.ModelAdmin):
     list_display = (
         "title",
         "org",
+        "event_status",
         "event_type",
         "starts_at",
         "ends_at",
         "shift_count",
+        "owned_by",
         "created_at",
     )
 
     list_filter = (
         "org",
+        "event_status",
         "event_type",
         "starts_at",
     )
 
     search_fields = (
         "title",
+        "event_status",
+        "event_type",
         "description",
         "location_name",
         "location_address",
     )
+    actions = [make_draft, make_scheduled, make_finished]
 
     ordering = ("-starts_at",)
 
@@ -109,7 +131,9 @@ class EventAdmin(admin.ModelAdmin):
                 "fields": (
                     "org",
                     "title",
+                    "event_status",
                     "event_type",
+                    "owned_by",
                 ),
             },
         ),
@@ -154,6 +178,8 @@ class EventAdmin(admin.ModelAdmin):
     def save_model(self, request, obj, form, change):
         if not obj.created_by:
             obj.created_by = request.user
+        if not obj.owned_by:
+            obj.owned_by = request.user
         super().save_model(request, obj, form, change)
 
     def get_queryset(self, request):

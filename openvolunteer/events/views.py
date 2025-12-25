@@ -3,6 +3,7 @@ import uuid
 
 from django.contrib.auth.decorators import login_required
 from django.http import Http404
+from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from django.shortcuts import redirect
 from django.shortcuts import render
@@ -14,6 +15,7 @@ from .models import Event
 from .models import Shift
 from .models import ShiftAssignment
 from .permissions import user_can_assign_people
+from .permissions import user_can_view_events
 
 
 @login_required
@@ -42,6 +44,9 @@ def event_detail(request, event_id):
         Event.objects.select_related("org"),
         id=event_id,
     )
+
+    if not user_can_view_events(request.user, event):
+        raise HttpResponse(status=403)
 
     shifts_qs = event.shifts.order_by("starts_at")
 
