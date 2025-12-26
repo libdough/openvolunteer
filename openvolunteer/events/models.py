@@ -64,20 +64,46 @@ class Event(models.Model):
     def __str__(self):
         return self.title
 
+    def default_shift(self):
+        shift, _ = self.shifts.get_or_create(
+            is_default=True,
+            defaults={
+                "name": self.title,
+                "starts_at": self.starts_at,
+                "ends_at": self.ends_at,
+                "capacity": 0,
+                "is_hidden": True,
+            },
+        )
+        return shift
+
+    def visible_shifts(self):
+        return self.shifts.filter(is_hidden=False)
+
 
 class Shift(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     event = models.ForeignKey(Event, on_delete=models.CASCADE, related_name="shifts")
+
     name = models.CharField(max_length=200, blank=True)
+
     starts_at = models.DateTimeField()
     ends_at = models.DateTimeField()
-    capacity = models.PositiveIntegerField(
-        default=0,
-        help_text="Set to 0 for unlimited capacity",
-    )
+
+    capacity = models.PositiveIntegerField(default=0)  # 0 = unlimited
+
+    is_default = models.BooleanField(default=False)
+    is_hidden = models.BooleanField(default=False)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["event", "is_default"]),
+        ]
 
     def __str__(self):
-        return self.name
+        if self.is_default:
+            return "Default event shift"
+        return self.name or "Shift"
 
     @property
     def assigned_count(self):
@@ -88,6 +114,10 @@ class Shift(models.Model):
         if self.capacity == 0:
             return True
         return self.assigned_count < self.capacity
+
+    @property
+    def is_new_record(self):
+        return self._state.adding
 
 
 class ShiftAssignment(models.Model):

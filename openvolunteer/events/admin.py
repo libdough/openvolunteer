@@ -41,11 +41,15 @@ class ShiftInline(admin.TabularInline):
         "ends_at",
         "capacity_display",
         "signup_count",
+        "is_default",
+        "is_hidden",
     )
 
     readonly_fields = (
         "capacity_display",
         "signup_count",
+        "is_default",
+        "is_hidden",
     )
 
     show_change_link = True
@@ -58,6 +62,10 @@ class ShiftInline(admin.TabularInline):
     def signup_count(self, obj):
         return obj.assignments.count()
 
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        return qs.filter(is_hidden=False)
+
 
 @admin.register(Shift)
 class ShiftAdmin(admin.ModelAdmin):
@@ -68,6 +76,8 @@ class ShiftAdmin(admin.ModelAdmin):
         "ends_at",
         "capacity_display",
         "signup_count",
+        "is_default",
+        "is_hidden",
     )
 
     list_filter = ("event__org",)

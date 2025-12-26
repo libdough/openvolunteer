@@ -2,37 +2,40 @@
 import uuid
 
 from django.contrib.auth.decorators import login_required
+from django.core.exceptions import PermissionDenied
+from django.forms import modelformset_factory
 from django.http import Http404
-from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from django.shortcuts import redirect
 from django.shortcuts import render
 
 from openvolunteer.core.pagination import paginate
+from openvolunteer.orgs.models import Organization
 from openvolunteer.people.models import Person
+from openvolunteer.users.models import User
 
+from .forms import EventForm
+from .forms import ShiftForm
 from .models import Event
 from .models import Shift
 from .models import ShiftAssignment
 from .permissions import user_can_assign_people
-from .permissions import user_can_view_events
+from .permissions import user_can_edit_event_owner
+from .permissions import user_can_manage_events
 
 
 @login_required
 def event_list(request):
-    events_qs = (
-        Event.objects.select_related("org")
-        .prefetch_related("shifts")
-        .order_by("starts_at")
-    )
+    qs = Event.objects.select_related("org").order_by("starts_at")
 
-    pagination = paginate(request, events_qs, per_page=20)
+    pagination = paginate(request, qs, per_page=20)
 
     return render(
         request,
         "events/event_list.html",
         {
             "events": pagination["page_obj"],
+            "can_create_event": True,
             **pagination,
         },
     )
@@ -40,26 +43,186 @@ def event_list(request):
 
 @login_required
 def event_detail(request, event_id):
-    event = get_object_or_404(
-        Event.objects.select_related("org"),
-        id=event_id,
-    )
+    event = get_object_or_404(Event.objects.select_related("org"), id=event_id)
 
-    if not user_can_view_events(request.user, event):
-        raise HttpResponse(status=403)
+    can_assign = user_can_assign_people(request.user, event)
 
-    shifts_qs = event.shifts.order_by("starts_at")
+    # Always get/create the default (hidden) shift
+    default_shift = event.default_shift()
 
-    pagination = paginate(request, shifts_qs, per_page=20)
+    # People already assigned via default shift
+    assigned_qs = Person.objects.filter(
+        shift_assignments__shift=default_shift,
+    ).distinct()
+
+    assigned_ids = set(assigned_qs.values_list("id", flat=True))
+
+    if request.method == "POST" and can_assign:
+        posted_ids = set(
+            map(int, request.POST.getlist("people")),
+        )
+
+        # Remove unchecked people
+        ShiftAssignment.objects.filter(
+            shift=default_shift,
+            person_id__in=(assigned_ids - posted_ids),
+        ).delete()
+
+        # Add newly checked people
+        ShiftAssignment.objects.bulk_create(
+            [
+                ShiftAssignment(
+                    shift=default_shift,
+                    person_id=pid,
+                )
+                for pid in (posted_ids - assigned_ids)
+            ],
+            ignore_conflicts=True,
+        )
+
+        return redirect("events:event_detail", event.id)
+
+    # Only allow people from the same org
+    available_people = Person.objects.filter(
+        org_links__org=event.org,
+    ).distinct()
+
+    # Paginate visible shifts (excluding hidden default shift if desired)
+    shifts_qs = event.shifts.exclude(id=default_shift.id).order_by("starts_at")
+
+    pagination = paginate(request, shifts_qs, per_page=10)
 
     return render(
         request,
         "events/event_detail.html",
         {
-            "can_assign_people": user_can_assign_people(request.user, event),
             "event": event,
+            "can_edit": user_can_manage_events(request.user, event),
+            "can_assign_people": can_assign,
+            "assigned_people": assigned_qs,
+            "available_people": available_people,
             "shifts": pagination["page_obj"],
             **pagination,
+        },
+    )
+
+
+@login_required
+def event_create(request):
+    # TODO: handle perms better
+
+    org_qs = Organization.objects.filter(
+        memberships__user=request.user,
+    ).distinct()
+
+    if request.method == "POST":
+        form = EventForm(request.POST)
+        form.fields["org"].queryset = org_qs
+        if form.is_valid():
+            org = form.cleaned_data["org"]
+
+            if not user_can_manage_events(request.user, org=org):
+                msg = (
+                    "You do not have permission to create events for this organization."
+                )
+                raise PermissionDenied(msg)
+
+            event = form.save(commit=False)
+            event.created_by = request.user
+            event.owned_by = request.user
+            event.save()
+            return redirect("events:event_detail", event.id)
+    else:
+        form = EventForm()
+        form.fields["org"].queryset = org_qs
+
+    return render(
+        request,
+        "events/event_form.html",
+        {
+            "form": form,
+            "is_create": True,
+        },
+    )
+
+
+ShiftFormSet = modelformset_factory(
+    Shift,
+    form=ShiftForm,
+    extra=1,
+    can_delete=True,
+)
+
+
+@login_required
+def event_edit(request, event_id):
+    event = get_object_or_404(Event, id=event_id)
+
+    if not user_can_manage_events(request.user, event):
+        raise Http404
+
+    default_shift = event.default_shift()
+
+    shift_qs = (
+        event.shifts.exclude(is_default=True)
+        .exclude(is_hidden=True)
+        .order_by("starts_at")
+    )
+
+    org_qs = Organization.objects.filter(
+        memberships__user=request.user,
+    ).distinct()
+
+    can_edit_owner = user_can_edit_event_owner(request.user, event)
+
+    if request.method == "POST":
+        shift_formset = ShiftFormSet(
+            request.POST,
+            queryset=shift_qs,
+        )
+        form = EventForm(request.POST, instance=event)
+        if not can_edit_owner:
+            form.fields["owned_by"].disabled = True
+        form.fields["owned_by"].queryset = User.objects.filter(
+            memberships__org=event.org,
+        ).distinct()
+        form.fields["owned_by"].required = False
+        form.fields["org"].queryset = org_qs
+        if form.is_valid() and shift_formset.is_valid():
+            event = form.save()
+
+            # Update default shift capacity
+            default_shift.capacity = request.POST.get("default_shift_capacity") or 0
+            default_shift.save()
+
+            shifts = shift_formset.save(commit=False)
+            for shift in shifts:
+                shift.event = event
+                shift.save()
+
+            for shift in shift_formset.deleted_objects:
+                shift.delete()
+
+            return redirect("events:event_detail", event.id)
+    else:
+        shift_formset = ShiftFormSet(queryset=shift_qs)
+        form = EventForm(instance=event)
+        form.fields["org"].queryset = org_qs
+        form.fields["owned_by"].queryset = User.objects.filter(
+            memberships__org=event.org,
+        ).distinct()
+        form.fields["owned_by"].required = False
+
+    return render(
+        request,
+        "events/event_form.html",
+        {
+            "form": form,
+            "event": event,
+            "can_edit_owner": can_edit_owner,
+            "default_shift": default_shift,
+            "shift_formset": shift_formset,
+            "is_create": False,
         },
     )
 

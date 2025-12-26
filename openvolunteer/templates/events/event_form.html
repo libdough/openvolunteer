@@ -1,0 +1,214 @@
+{% extends "base.html" %}
+
+{% block title %}
+  {% if is_create %}
+    Create Event
+  {% else %}
+    Edit Event
+  {% endif %}
+{% endblock title %}
+{% block content %}
+  <a href="{% if is_create %}{% url 'events:event_list' %}{% else %}{% url 'events:event_detail' event.id %}{% endif %}"
+     class="text-muted mb-3 d-inline-block">← Back</a>
+  <div class="mb-4">
+    <h1 class="mb-1">
+      {% if is_create %}
+        Create Event
+      {% else %}
+        Edit Event
+      {% endif %}
+    </h1>
+    <div class="text-muted">
+      {% if is_create %}
+        Create a new event for your organization
+      {% else %}
+        Update event details and scheduling
+      {% endif %}
+    </div>
+  </div>
+  <form method="post" novalidate>
+    {% csrf_token %}
+    {% if form.non_field_errors %}<div class="alert alert-danger">{{ form.non_field_errors }}</div>{% endif %}
+    <div class="card shadow-sm mb-4">
+      <div class="card-header">Basic Information</div>
+      <div class="card-body">
+        <div class="mb-3">
+          <label class="form-label">
+            <strong>Organization</strong>
+          </label>
+          {{ form.org }}
+          {{ form.org.errors }}
+        </div>
+        <div class="mb-3">
+          <label class="form-label">
+            <strong>Title</strong>
+          </label>
+          {{ form.title }}
+          {{ form.title.errors }}
+        </div>
+        {% if not is_create %}
+          <div class="mb-3">
+            <label class="form-label">
+              <strong>Owned by</strong>
+            </label>
+            {% if can_edit_owner %}
+              {{ form.owned_by }}
+            {% else %}
+              {{ event.owned_by.name|default:event.owned_by.username }}
+              <div class="form-text">Only organization owners and admins can change the event owner.</div>
+            {% endif %}
+          </div>
+        {% endif %}
+        {% if form.owned_by.errors %}<div class="invalid-feedback d-block">{{ form.owned_by.errors }}</div>{% endif %}
+        <div class="row">
+          <div class="col-md-6 mb-3">
+            <label class="form-label">
+              <strong>Event Type</strong>
+            </label>
+            {{ form.event_type }}
+            {{ form.event_type.errors }}
+          </div>
+          <div class="col-md-6 mb-3">
+            <label class="form-label">
+              <strong>Status</strong>
+            </label>
+            {{ form.event_status }}
+            {{ form.event_status.errors }}
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card shadow-sm mb-4">
+      <div class="card-header">Date & Time</div>
+      <div class="card-body">
+        <div class="row">
+          <div class="col-md-6 mb-3">
+            <label class="form-label">
+              <strong>Starts At</strong>
+            </label>
+            {{ form.starts_at }}
+            {{ form.starts_at.errors }}
+          </div>
+          <div class="col-md-6 mb-3">
+            <label class="form-label">
+              <strong>Ends At</strong>
+            </label>
+            {{ form.ends_at }}
+            {{ form.ends_at.errors }}
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card shadow-sm mb-4">
+      <div class="card-header">Location</div>
+      <div class="card-body">
+        <div class="mb-3">
+          <label class="form-label">
+            <strong>Location Name</strong>
+          </label>
+          {{ form.location_name }}
+          {{ form.location_name.errors }}
+        </div>
+        <div class="mb-3">
+          <label class="form-label">
+            <strong>Location Address</strong>
+          </label>
+          {{ form.location_address }}
+          {{ form.location_address.errors }}
+        </div>
+      </div>
+    </div>
+    <div class="card shadow-sm mb-4">
+      <div class="card-header">Description</div>
+      <div class="card-body">
+        <label class="form-label visually-hidden">Description</label>
+        {{ form.description }}
+        {{ form.description.errors }}
+      </div>
+    </div>
+    {% if not is_create %}
+      <div class="card shadow-sm mb-4">
+        <div class="card-header">Assignments</div>
+        <div class="card-body">
+          {# ================= DEFAULT SHIFT ================= #}
+          <div class="mb-4">
+            <h6 class="mb-2">Generic Assignments</h6>
+            <div class="text-muted small mb-2">Used for event-level assignments when no shifts are defined</div>
+            <div class="row align-items-end">
+              <div class="col-md-6">
+                <label class="form-label">Capacity</label>
+                <input type="number"
+                       name="default_shift_capacity"
+                       class="form-control"
+                       min="0"
+                       value="{{ default_shift.capacity }}" />
+                <div class="form-text">0 means unlimited</div>
+              </div>
+            </div>
+          </div>
+          <hr />
+          {# ================= ADDITIONAL SHIFTS ================= #}
+          <div>
+            <h6 class="mb-3">Shift Assignments</h6>
+            <div class="text-muted small mb-2">
+              Used for events that require multiple shifts (e.g. canvasing over multiple days)
+            </div>
+            {{ shift_formset.management_form }}
+            {% for form in shift_formset %}
+              {% if not form.instance.is_new_record %}{{ form.id }}{% endif %}
+              <div class="border rounded p-3 mb-3 {% if form.instance.is_new_record %}bg-light{% endif %}">
+                {% if not form.instance.is_new_record %}
+                  <strong class="d-block mb-1">{{ form.instance.name|default:"Shift" }}</strong>
+                {% else %}
+                  <strong class="d-block mb-1 text-muted">+ Add a new shift</strong>
+                  <div class="text-muted small mb-3">Leave this blank if you don’t want to add another shift.</div>
+                {% endif %}
+                {% if form.non_field_errors %}<div class="alert alert-danger">{{ form.non_field_errors }}</div>{% endif %}
+                <div class="row g-3 align-items-end">
+                  <div class="col-md-4">
+                    <label class="form-label text-muted">Name</label>
+                    {{ form.name }}
+                    {% if form.name.errors %}<div class="invalid-feedback d-block">{{ form.name.errors }}</div>{% endif %}
+                  </div>
+                  <div class="col-md-3">
+                    <label class="form-label text-muted">Starts</label>
+                    {{ form.starts_at }}
+                    {% if form.starts_at.errors %}<div class="invalid-feedback d-block">{{ form.starts_at.errors }}</div>{% endif %}
+                  </div>
+                  <div class="col-md-3">
+                    <label class="form-label text-muted">Ends</label>
+                    {{ form.ends_at }}
+                    {% if form.ends_at.errors %}<div class="invalid-feedback d-block">{{ form.ends_at.errors }}</div>{% endif %}
+                  </div>
+                  <div class="col-md-2 col-lg-2">
+                    <label class="form-label text-muted">Capacity</label>
+                    {{ form.capacity }}
+                    {% if form.capacity.errors %}<div class="invalid-feedback d-block">{{ form.capacity.errors }}</div>{% endif %}
+                  </div>
+                </div>
+                {% if not form.instance.is_new_record and form.DELETE %}
+                  <div class="form-check mt-3">
+                    {{ form.DELETE }}
+                    {{ form.DELETE.errors }}
+                    <label class="form-check-label text-muted">Remove this shift</label>
+                  </div>
+                {% endif %}
+              </div>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+    {% endif %}
+    <div class="d-flex justify-content-end gap-2">
+      <a href="{% if is_create %}{% url 'events:event_list' %}{% else %}{% url 'events:event_detail' event.id %}{% endif %}"
+         class="btn btn-outline-secondary">Cancel</a>
+      <button type="submit" class="btn btn-primary">
+        {% if is_create %}
+          Create Event
+        {% else %}
+          Save Changes
+        {% endif %}
+      </button>
+    </div>
+  </form>
+{% endblock content %}

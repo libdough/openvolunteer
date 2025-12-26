@@ -12,11 +12,13 @@ class EventForm(forms.ModelForm):
             "org",
             "title",
             "event_type",
+            "event_status",
             "starts_at",
             "ends_at",
             "location_name",
             "location_address",
             "description",
+            "owned_by",
         ]
         widgets = {
             "starts_at": forms.DateTimeInput(
@@ -26,6 +28,12 @@ class EventForm(forms.ModelForm):
                 attrs={"type": "datetime-local"},
             ),
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        # owned_by should NEVER be required
+        self.fields["owned_by"].required = False
 
     def clean(self):
         cleaned = super().clean()
