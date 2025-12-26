@@ -15,6 +15,7 @@
   </div>
   <div class="card shadow-sm">
     <div class="table-responsive">
+      {% include "components/filters.html" %}
       <table class="table table-hover align-middle mb-0">
         <thead class="table-light sticky-top">
           <tr>
@@ -33,9 +34,10 @@
                 {% if person.discord %}<div class="text-muted small">{{ person.discord }}</div>{% endif %}
               </td>
               <td class="small">
+                {% if person.discord %}<div>{{ person.discord }}</div>{% endif %}
                 {% if person.email %}<div>{{ person.email }}</div>{% endif %}
                 {% if person.phone %}<div>{{ person.phone }}</div>{% endif %}
-                {% if not person.email and not person.phone %}<span class="text-muted">—</span>{% endif %}
+                {% if not person.discord and not person.email and not person.phone %}<span class="text-muted">—</span>{% endif %}
               </td>
               <td class="small">
                 {% for link in person.org_links.all %}

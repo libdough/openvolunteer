@@ -5,11 +5,13 @@ from django.shortcuts import get_object_or_404
 from django.shortcuts import redirect
 from django.shortcuts import render
 
+from openvolunteer.core.filters import apply_filters
 from openvolunteer.core.pagination import paginate
 from openvolunteer.orgs.models import Membership
 from openvolunteer.orgs.models import Organization
 from openvolunteer.orgs.permissions import user_can_manage_people
 
+from .filters import PERSON_FILTERS
 from .forms import PersonForm
 from .models import Person
 from .permissions import user_can_create_person
@@ -19,24 +21,27 @@ from .permissions import user_can_view_person
 
 @login_required
 def person_list(request):
-    # Admins can see everyone
-    if request.user.is_staff or request.user.is_superuser:
-        people = Person.objects.all().order_by("full_name")
-    else:
+    # ================= BASE QUERYSET =================
+    people = Person.objects.all()
+
+    # Non-admin users only see people in their orgs
+    if not (request.user.is_staff or request.user.is_superuser):
         org_ids = Membership.objects.filter(
             user=request.user,
             is_active=True,
         ).values_list("org_id", flat=True)
 
-        people = (
-            Person.objects.filter(
-                org_links__org_id__in=org_ids,
-                org_links__is_active=True,
-            )
-            .distinct()
-            .order_by("full_name")
+        people = people.filter(
+            org_links__org_id__in=org_ids,
+            org_links__is_active=True,
         )
 
+    people = people.distinct().order_by("full_name")
+
+    # ================= FILTERS =================
+    people, filter_ctx = apply_filters(request, people, PERSON_FILTERS)
+
+    # ================= PAGINATION =================
     pagination = paginate(request, people, per_page=20)
 
     return render(
@@ -46,6 +51,7 @@ def person_list(request):
             "can_edit": user_can_create_person(request.user),
             "people": pagination["page_obj"],
             **pagination,
+            **filter_ctx,
         },
     )
 

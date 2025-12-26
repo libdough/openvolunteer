@@ -9,11 +9,13 @@ from django.shortcuts import get_object_or_404
 from django.shortcuts import redirect
 from django.shortcuts import render
 
+from openvolunteer.core.filters import apply_filters
 from openvolunteer.core.pagination import paginate
 from openvolunteer.orgs.models import Organization
 from openvolunteer.people.models import Person
 from openvolunteer.users.models import User
 
+from .filters import EVENT_FILTERS
 from .forms import EventForm
 from .forms import ShiftForm
 from .models import Event
@@ -28,6 +30,7 @@ from .permissions import user_can_manage_events
 def event_list(request):
     qs = Event.objects.select_related("org").order_by("starts_at")
 
+    qs, filter_ctx = apply_filters(request, qs, EVENT_FILTERS)
     pagination = paginate(request, qs, per_page=20)
 
     return render(
@@ -37,6 +40,7 @@ def event_list(request):
             "events": pagination["page_obj"],
             "can_create_event": True,
             **pagination,
+            **filter_ctx,
         },
     )
 

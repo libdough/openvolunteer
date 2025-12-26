@@ -7,10 +7,13 @@ from django.shortcuts import get_object_or_404
 from django.shortcuts import redirect
 from django.shortcuts import render
 
+from openvolunteer.core.filters import apply_filters
 from openvolunteer.core.pagination import paginate
 from openvolunteer.people.models import PersonOrganization
 from openvolunteer.users.models import User
 
+from .filters import MEMBERSHIP_FILTERS
+from .filters import PERSON_ORG_FILTERS
 from .forms import AddMemberForm
 from .forms import AddPersonToOrgForm
 from .forms import OrganizationForm
@@ -65,6 +68,11 @@ def org_detail(request, slug):
                 filter=Q(people_links__is_active=True),
                 distinct=True,
             ),
+            member_count=Count(
+                "memberships",
+                filter=Q(memberships__is_active=True),
+                distinct=True,
+            ),
         )
         .filter(slug=slug)
         .first()
@@ -79,13 +87,14 @@ def org_detail(request, slug):
     memberships = (
         Membership.objects.filter(org=org, is_active=True)
         .select_related("user")
-        .order_by("role", "created_at")
+        .order_by("role", "created_at")[:5]
     )
 
     people = (
         PersonOrganization.objects.filter(org=org, is_active=True)
         .select_related("person")
-        .order_by("person__full_name")
+        .prefetch_related("person__taggings__tag")
+        .order_by("person__full_name")[:5]
     )
 
     return render(
@@ -183,6 +192,7 @@ def org_members(request, slug):
         raise ValueError(form.errors)
     form = AddMemberForm()
 
+    members, filter_ctx = apply_filters(request, members, MEMBERSHIP_FILTERS)
     pagination = paginate(request, members, per_page=20)
 
     role_choices = OrgRole.choices
@@ -194,6 +204,7 @@ def org_members(request, slug):
             "org": org,
             "members": pagination["page_obj"],
             **pagination,
+            **filter_ctx,
             "role_choices": role_choices,
             "form": form,
         },
@@ -262,6 +273,7 @@ def org_people(request, slug):
     else:
         form = AddPersonToOrgForm(org=org)
 
+    people_links, filter_ctx = apply_filters(request, people_links, PERSON_ORG_FILTERS)
     pagination = paginate(request, people_links, per_page=20)
 
     return render(
@@ -272,5 +284,6 @@ def org_people(request, slug):
             "people_links": pagination["page_obj"],
             "form": form,
             **pagination,
+            **filter_ctx,
         },
     )
