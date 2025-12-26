@@ -21,4 +21,15 @@ urlpatterns = [
         name="org_member_remove",
     ),
     path("orgs/<slug:slug>/people/", views.org_people, name="org_people"),
+    # Calendars
+    path(
+        "<slug:slug>/calendar/",
+        views.org_calendar,
+        name="org_calendar",
+    ),
+    path(
+        "<slug:slug>/calendar/events/",
+        views.org_calendar_events,
+        name="org_calendar_events",
+    ),
 ]

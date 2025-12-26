@@ -1,0 +1,93 @@
+<link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.css"
+      rel="stylesheet" />
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
+<script>
+  (function() {
+    /* ===============================
+       Helpers
+       =============================== */
+
+    function updateEventTimes(info) {
+      info.el.classList.add("opacity-50");
+
+      const [type, uuid] = info.event.id.includes(":") ?
+        info.event.id.split(":") : ["events", info.event.id];
+
+      fetch(`/${type}/${uuid}/update-times/`, {
+        method: "POST",
+        headers: {
+          "X-CSRFToken": "{{ csrf_token }}",
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: new URLSearchParams({
+          start: info.event.start.toISOString(),
+          end: info.event.end?.toISOString() || info.event.start.toISOString(),
+        }),
+      }).then(response => {
+        if (!response.ok) {
+          info.revert();
+          alert("Unable to update event");
+        }
+        info.el.classList.remove("opacity-50");
+      });
+    }
+
+    function buildCalendar(el) {
+      const isMini = el.classList.contains("mini-calendar");
+      const canEdit = el.dataset.canEdit === "true";
+
+      return new FullCalendar.Calendar(el, {
+        initialView: "dayGridMonth",
+        height: "auto",
+
+        headerToolbar: isMini ? {
+          left: "prev",
+          center: "title",
+          right: "next"
+        } : {
+          left: "prev,next today",
+          center: "title",
+          right: "multiMonthYear,dayGridMonth,timeGridWeek,timeGridDay",
+        },
+
+        navLinks: true,
+        nowIndicator: true,
+
+        editable: canEdit,
+        selectable: canEdit,
+        eventStartEditable: canEdit,
+        eventDurationEditable: canEdit,
+        eventResizableFromStart: canEdit,
+
+        slotDuration: "00:15:00",
+        snapDuration: "00:15:00",
+        slotLabelInterval: "01:00",
+
+        events: el.dataset.eventsUrl,
+
+        eventDrop: updateEventTimes,
+        eventResize: updateEventTimes,
+
+        eventClick(info) {
+          if (info.view.type === "dayGridMonth") {
+            info.jsEvent.preventDefault();
+            info.view.calendar.changeView("timeGridDay", info.event.start);
+          }
+        },
+      });
+    }
+
+    /* ===============================
+       Auto-init on DOM ready
+       =============================== */
+
+    document.addEventListener("DOMContentLoaded", function() {
+      document
+        .querySelectorAll(".calendar, .mini-calendar")
+        .forEach(el => {
+          const calendar = buildCalendar(el);
+          calendar.render();
+        });
+    });
+  })();
+</script>

@@ -5,9 +5,13 @@ from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
 from django.forms import modelformset_factory
 from django.http import Http404
+from django.http import HttpResponseForbidden
+from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
 from django.shortcuts import redirect
 from django.shortcuts import render
+from django.utils.dateparse import parse_datetime
+from django.views.decorators.http import require_POST
 
 from openvolunteer.core.filters import apply_filters
 from openvolunteer.core.pagination import paginate
@@ -119,8 +123,18 @@ def event_create(request):
         memberships__user=request.user,
     ).distinct()
 
+    initial = {}
+    # Allow redirect forms to specify org
+    org_id = request.GET.get("org")
+    if org_id:
+        try:
+            org = org_qs.get(id=org_id)
+            initial["org"] = org
+        except Organization.DoesNotExist:
+            pass
+
     if request.method == "POST":
-        form = EventForm(request.POST)
+        form = EventForm(request.POST, initial=initial)
         form.fields["org"].queryset = org_qs
         if form.is_valid():
             org = form.cleaned_data["org"]
@@ -137,7 +151,7 @@ def event_create(request):
             event.save()
             return redirect("events:event_detail", event.id)
     else:
-        form = EventForm()
+        form = EventForm(initial=initial)
         form.fields["org"].queryset = org_qs
 
     return render(
@@ -229,6 +243,30 @@ def event_edit(request, event_id):
             "is_create": False,
         },
     )
+
+
+@login_required
+@require_POST
+def event_update_times(request, event_id):
+    event = get_object_or_404(Event, id=event_id)
+
+    if not user_can_manage_events(request.user, event=event):
+        return HttpResponseForbidden("You do not have permission to modify this event.")
+
+    start = parse_datetime(request.POST.get("start"))
+    end = parse_datetime(request.POST.get("end"))
+
+    if not start or not end:
+        return JsonResponse({"error": "Invalid datetime"}, status=400)
+
+    if end <= start:
+        return JsonResponse({"error": "End must be after start"}, status=400)
+
+    event.starts_at = start
+    event.ends_at = end
+    event.save(update_fields=["starts_at", "ends_at"])
+
+    return JsonResponse({"ok": True})
 
 
 @login_required

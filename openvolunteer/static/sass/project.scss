@@ -115,3 +115,15 @@ $red: #b94a48;
   background-color: var(--bs-primary);
   border-color: var(--bs-primary);
 }
+
+.mini-calendar {
+  font-size: 0.8rem;
+}
+
+.mini-calendar .fc-toolbar-title {
+  font-size: 0.9rem;
+}
+
+.mini-calendar .fc-event {
+  font-size: 0.75rem;
+}

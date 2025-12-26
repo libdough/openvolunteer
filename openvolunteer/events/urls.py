@@ -14,4 +14,9 @@ urlpatterns = [
         views.shift_assign_people,
         name="shift_assign_people",
     ),
+    path(
+        "<uuid:event_id>/update-times/",
+        views.event_update_times,
+        name="event_update_times",
+    ),
 ]

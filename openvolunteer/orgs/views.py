@@ -1,14 +1,24 @@
 #!/usr/bin/env python3
 from django.contrib.auth.decorators import login_required
+from django.db.models import Case
 from django.db.models import Count
+from django.db.models import IntegerField
 from django.db.models import Q
+from django.db.models import Value
+from django.db.models import When
 from django.http import Http404
+from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
 from django.shortcuts import redirect
 from django.shortcuts import render
+from django.urls import reverse
 
 from openvolunteer.core.filters import apply_filters
 from openvolunteer.core.pagination import paginate
+from openvolunteer.events.models import Event
+from openvolunteer.events.models import EventStatus
+from openvolunteer.events.models import Shift
+from openvolunteer.events.permissions import user_can_manage_events
 from openvolunteer.people.models import PersonOrganization
 from openvolunteer.users.models import User
 
@@ -73,6 +83,11 @@ def org_detail(request, slug):
                 filter=Q(memberships__is_active=True),
                 distinct=True,
             ),
+            event_count=Count(
+                "events",
+                filter=Q(events__event_status=EventStatus.SCHEDULED),
+                distinct=True,
+            ),
         )
         .filter(slug=slug)
         .first()
@@ -97,16 +112,37 @@ def org_detail(request, slug):
         .order_by("person__full_name")[:5]
     )
 
+    events = Event.objects.filter(org=org)
+
+    if not user_can_manage_events(request.user, org=org):
+        events = events.exclude(
+            event_status__in=[
+                EventStatus.DRAFT,
+                EventStatus.FINISHED,
+            ],
+        )
+
+    # Finished events always at bottom
+    events = events.annotate(
+        finished_sort=Case(
+            When(event_status=EventStatus.FINISHED, then=Value(1)),
+            default=Value(0),
+            output_field=IntegerField(),
+        ),
+    ).order_by("finished_sort", "-starts_at")[:8]
+
     return render(
         request,
         "orgs/org_detail.html",
         {
             "org": org,
+            "events": events,
             "memberships": memberships,
             "people": people,
             "can_edit_org": user_can_edit_org(request.user, org),
             "can_manage_members": user_can_manage_members(request.user, org),
             "can_manage_people": user_can_manage_people(request.user, org),
+            "can_manage_events": user_can_manage_events(request.user, org=org),
         },
     )
 
@@ -285,5 +321,78 @@ def org_people(request, slug):
             "form": form,
             **pagination,
             **filter_ctx,
+        },
+    )
+
+
+@login_required
+def org_calendar_events(request, slug):
+    org = get_object_or_404(Organization, slug=slug)
+
+    if not user_can_view_org(request.user, org):
+        raise Http404
+
+    # ---- EVENTS ----
+    events_qs = Event.objects.filter(org=org)
+
+    if not user_can_manage_events(request.user, org=org):
+        events_qs = events_qs.filter(event_status=EventStatus.SCHEDULED)
+
+    data = []
+
+    data.extend(
+        [
+            {
+                "id": f"events:{e.id}",
+                "title": e.title,
+                "start": e.starts_at.isoformat(),
+                "end": e.ends_at.isoformat(),
+                "url": reverse("events:event_detail", args=[e.id]),
+                "color": "#2196f3",  # blue
+                "editable": user_can_manage_events(request.user, event=e),
+                "extendedProps": {
+                    "type": "event",
+                },
+            }
+            for e in events_qs
+        ],
+    )
+
+    # ---- SHIFTS ----
+    shifts = Shift.objects.filter(
+        event__org=org,
+        is_hidden=False,
+    ).select_related("event")
+
+    data.extend(
+        [
+            {
+                "id": f"shifts:{s.id}",
+                "title": f"{s.event.title}: {s.name}",
+                "start": s.starts_at.isoformat(),
+                "end": s.ends_at.isoformat(),
+                "url": reverse("events:event_detail", args=[s.event_id]),
+                "color": "#4caf50",  # green
+            }
+            for s in shifts
+        ],
+    )
+
+    return JsonResponse(data, safe=False)
+
+
+@login_required
+def org_calendar(request, slug):
+    org = get_object_or_404(Organization, slug=slug)
+
+    if not user_can_view_org(request.user, org):
+        raise Http404
+
+    return render(
+        request,
+        "orgs/org_calendar.html",
+        {
+            "org": org,
+            "can_manage_events": user_can_manage_events(request.user, org=org),
         },
     )
