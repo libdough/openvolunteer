@@ -1,7 +1,7 @@
 # events/filters.py
 
 from .models import EventStatus
-from .models import EventType
+from .models import EventTemplate
 
 EVENT_FILTERS = [
     {
@@ -21,8 +21,9 @@ EVENT_FILTERS = [
         "name": "type",
         "label": "Type",
         "type": "select",
-        "choices": EventType.choices,
-        "lookup": "event_type",
+        # TODO: Filter by user memberships
+        "choices": lambda request: EventTemplate.objects.all(),
+        "lookup": "template",
     },
     {
         "name": "owned",

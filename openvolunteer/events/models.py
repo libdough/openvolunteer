@@ -8,12 +8,35 @@ from django.db import models
 from openvolunteer.orgs.models import Organization
 
 
-class EventType(models.TextChoices):
-    CANVASS = "canvass", "Canvass"
-    PHONEBANK = "phonebank", "Phone Bank"
-    TRAINING = "training", "Training"
-    MEETUP = "meetup", "Meetup"
-    OTHER = "other", "Other"
+class EventTemplate(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+
+    org = models.ForeignKey(
+        Organization,
+        null=True,
+        blank=True,
+        on_delete=models.CASCADE,
+        related_name="event_templates",
+    )
+
+    name = models.CharField(max_length=200)
+
+    is_active = models.BooleanField(default=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    modified_at = models.DateTimeField(auto_now=True)
+
+    ticket_templates = models.ManyToManyField(
+        "tickets.TicketTemplate",
+        blank=True,
+        related_name="event_templates",
+    )
+
+    class Meta:
+        unique_together = ("org", "name")
+
+    def __str__(self):
+        return self.name
 
 
 class EventStatus(models.TextChoices):
@@ -36,10 +59,10 @@ class Event(models.Model):
         choices=EventStatus,
         default=EventStatus.DRAFT,
     )
-    event_type = models.CharField(
-        max_length=20,
-        choices=EventType,
-        default=EventType.OTHER,
+    template = models.ForeignKey(
+        EventTemplate,
+        on_delete=models.PROTECT,
+        related_name="events",
     )
 
     starts_at = models.DateTimeField()
@@ -84,8 +107,23 @@ class Event(models.Model):
         )
         return shift
 
+    @property
+    def display_type(self):
+        if self.template:
+            return self.template.name
+        return self.get_event_type_display()
+
     def visible_shifts(self):
         return self.shifts.filter(is_hidden=False)
+
+    def has_generated_tickets(self):
+        return self.ticket_batches.exists()
+
+    def has_ticket_batches(self):
+        return self.ticket_batches.exists()
+
+    def ticket_batch_count(self):
+        return self.ticket_batches.count()
 
 
 class Shift(models.Model):

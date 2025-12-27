@@ -1,25 +1,15 @@
 #!/usr/bin/env python3
 from django.contrib import admin
+from django.contrib import messages
+from django.db import transaction
+
+from openvolunteer.tickets.services import generate_tickets_for_event
 
 from .models import Event
 from .models import EventStatus
+from .models import EventTemplate
 from .models import Shift
 from .models import ShiftAssignment
-
-
-@admin.action(description="Mark selected events as Draft")
-def make_draft(modeladmin, request, queryset):
-    queryset.update(event_status=EventStatus.DRAFT)
-
-
-@admin.action(description="Mark selected events as Scheduled")
-def make_scheduled(modeladmin, request, queryset):
-    queryset.update(event_status=EventStatus.SCHEDULED)
-
-
-@admin.action(description="Mark selected events as Finished")
-def make_finished(modeladmin, request, queryset):
-    queryset.update(event_status=EventStatus.FINISHED)
 
 
 class ShiftAssignmentInline(admin.TabularInline):
@@ -105,7 +95,7 @@ class EventAdmin(admin.ModelAdmin):
         "title",
         "org",
         "event_status",
-        "event_type",
+        "template",
         "starts_at",
         "ends_at",
         "shift_count",
@@ -116,19 +106,24 @@ class EventAdmin(admin.ModelAdmin):
     list_filter = (
         "org",
         "event_status",
-        "event_type",
+        "template",
         "starts_at",
     )
 
     search_fields = (
         "title",
         "event_status",
-        "event_type",
+        "template",
         "description",
         "location_name",
         "location_address",
     )
-    actions = [make_draft, make_scheduled, make_finished]
+    actions = [
+        "make_draft",
+        "make_scheduled",
+        "make_finished",
+        "generate_tickets_from_template",
+    ]
 
     ordering = ("-starts_at",)
 
@@ -142,7 +137,7 @@ class EventAdmin(admin.ModelAdmin):
                     "org",
                     "title",
                     "event_status",
-                    "event_type",
+                    "template",
                     "owned_by",
                 ),
             },
@@ -199,3 +194,149 @@ class EventAdmin(admin.ModelAdmin):
     @admin.display(description="Shifts")
     def shift_count(self, obj):
         return obj.shifts.count()
+
+    @admin.action(description="Mark selected events as Draft")
+    def make_draft(self, request, queryset):
+        queryset.update(event_status=EventStatus.DRAFT)
+
+    @admin.action(description="Mark selected events as Scheduled")
+    def make_scheduled(self, request, queryset):
+        queryset.update(event_status=EventStatus.SCHEDULED)
+
+    @admin.action(description="Mark selected events as Finished")
+    def make_finished(self, request, queryset):
+        queryset.update(event_status=EventStatus.FINISHED)
+
+    @admin.action(description="Generate all tickets from EventTemplate")
+    def generate_tickets_from_template(self, request, queryset):
+        """
+        Admin action to generate a TicketBatch + Tickets for selected events.
+        """
+
+        created = 0
+        skipped = 0
+
+        for event in queryset.select_related("template", "org"):
+            try:
+                if not event.template:
+                    skipped += 1
+                    messages.warning(
+                        request,
+                        f"Event '{event}' has no EventTemplate attached.",
+                    )
+                    continue
+
+                with transaction.atomic():
+                    reason = f"""
+                        User ({request.user.username}) generated batch of tickets
+                        from admin UI for event ({event})
+                    """
+                    batch, tickets = generate_tickets_for_event(
+                        event=event,
+                        created_by=request.user,
+                        reason=reason,
+                    )
+
+                created += 1
+                messages.success(
+                    request,
+                    f"Created {len(tickets)} tickets for '{event}' "
+                    f"(batch: {batch.name})",
+                )
+            # ruff: noqa: BLE001
+            except Exception as exc:
+                skipped += 1
+                messages.error(
+                    request,
+                    f"Failed to generate tickets for '{event}': {exc}",
+                )
+
+        if created:
+            messages.info(
+                request,
+                f"Ticket generation completed: {created} event(s) processed.",
+            )
+
+        if skipped and not created:
+            messages.warning(
+                request,
+                "No tickets were generated.",
+            )
+
+
+@admin.register(EventTemplate)
+class EventTemplateAdmin(admin.ModelAdmin):
+    list_display = (
+        "name",
+        "org",
+        "is_active",
+        "event_count",
+        "ticket_template_count",
+        "created_at",
+        "modified_at",
+    )
+
+    list_filter = (
+        "is_active",
+        "org",
+    )
+
+    search_fields = ("name",)
+
+    filter_horizontal = ("ticket_templates",)
+
+    readonly_fields = (
+        "created_at",
+        "modified_at",
+        "event_count",
+        "ticket_template_count",
+    )
+
+    fieldsets = (
+        (
+            None,
+            {
+                "fields": (
+                    "org",
+                    "name",
+                    "is_active",
+                ),
+            },
+        ),
+        (
+            "Ticket Templates",
+            {
+                "fields": (
+                    "ticket_templates",
+                    "ticket_template_count",
+                ),
+            },
+        ),
+        (
+            "Usage",
+            {
+                "fields": ("event_count",),
+            },
+        ),
+        (
+            "Metadata",
+            {
+                "fields": (
+                    "created_at",
+                    "modified_at",
+                ),
+            },
+        ),
+    )
+
+    @admin.display(
+        description="Events using template",
+    )
+    def event_count(self, obj):
+        return obj.events.count()
+
+    @admin.display(
+        description="Ticket templates attached",
+    )
+    def ticket_template_count(self, obj):
+        return obj.ticket_templates.count()

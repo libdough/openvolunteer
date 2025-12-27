@@ -13,7 +13,7 @@ class EventForm(forms.ModelForm):
         fields = [
             "org",
             "title",
-            "event_type",
+            "template",
             "event_status",
             "starts_at",
             "ends_at",
