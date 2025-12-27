@@ -46,8 +46,7 @@ class TicketTemplateAdmin(admin.ModelAdmin):
             {
                 "fields": (
                     "ticket_name_template",
-                    "message_template",
-                    "instructions",
+                    "description_template",
                 ),
             },
         ),
@@ -71,7 +70,6 @@ class TicketTemplateAdmin(admin.ModelAdmin):
             "Metadata",
             {
                 "fields": (
-                    "description",
                     "created_at",
                     "modified_at",
                 ),

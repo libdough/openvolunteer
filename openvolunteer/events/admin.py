@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 from django.contrib import admin
 from django.contrib import messages
-from django.db import transaction
 
 from openvolunteer.tickets.services import generate_tickets_for_event
 
@@ -207,16 +206,15 @@ class EventAdmin(admin.ModelAdmin):
     def make_finished(self, request, queryset):
         queryset.update(event_status=EventStatus.FINISHED)
 
-    @admin.action(description="Generate all tickets from EventTemplate")
+    @admin.action(description="Generate tickets from EventTemplate")
     def generate_tickets_from_template(self, request, queryset):
-        """
-        Admin action to generate a TicketBatch + Tickets for selected events.
-        """
-
         created = 0
         skipped = 0
+        warned = 0
 
-        for event in queryset.select_related("template", "org"):
+        for event in queryset.select_related("template", "org").prefetch_related(
+            "ticket_batches",
+        ):
             try:
                 if not event.template:
                     skipped += 1
@@ -226,16 +224,22 @@ class EventAdmin(admin.ModelAdmin):
                     )
                     continue
 
-                with transaction.atomic():
-                    reason = f"""
-                        User ({request.user.username}) generated batch of tickets
-                        from admin UI for event ({event})
-                    """
-                    batch, tickets = generate_tickets_for_event(
-                        event=event,
-                        created_by=request.user,
-                        reason=reason,
+                if event.has_ticket_batches():
+                    warned += 1
+                    messages.warning(
+                        request,
+                        (
+                            f"Event '{event}' already has "
+                            f"{event.ticket_batch_count()} ticket batch(es). "
+                            "Generating another batch anyway."
+                        ),
                     )
+
+                batch, tickets = generate_tickets_for_event(
+                    event=event,
+                    created_by=request.user,
+                    reason="Generated via admin action",
+                )
 
                 created += 1
                 messages.success(
@@ -254,14 +258,18 @@ class EventAdmin(admin.ModelAdmin):
         if created:
             messages.info(
                 request,
-                f"Ticket generation completed: {created} event(s) processed.",
+                f"Ticket generation complete: {created} event(s) processed.",
+            )
+
+        if warned:
+            messages.warning(
+                request,
+                "One or more events already had ticket batches. "
+                "Review batches to avoid duplicate work.",
             )
 
         if skipped and not created:
-            messages.warning(
-                request,
-                "No tickets were generated.",
-            )
+            messages.warning(request, "No tickets were generated.")
 
 
 @admin.register(EventTemplate)

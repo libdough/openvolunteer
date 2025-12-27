@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h1>{{ ticket.name }}</h1>
+    <div>
+      {% if ticket.claimable and not ticket.assigned_to %}
+        <a href="{% url 'tickets:claim_ticket' ticket.id %}"
+           class="btn btn-sm btn-outline-primary">Claim ticket</a>
+      {% endif %}
+      {% if ticket.assigned_to == request.user %}
+        <a href="{% url 'tickets:unclaim_ticket' ticket.id %}"
+           class="btn btn-sm btn-outline-secondary">Unclaim</a>
+      {% endif %}
+    </div>
+  </div>
+  <div class="row">
+    <!-- Main content -->
+    <div class="col-md-8">
+      <div class="card mb-3">
+        <div class="card-body">
+          {% load markdown_extras %}
+
+          <div class="markdown-body">{{ ticket.description|render_markdown|safe }}</div>
+        </div>
+      </div>
+    </div>
+    <!-- Sidebar -->
+    <div class="col-md-4">
+      <div class="card mb-3">
+        <div class="card-body">
+          <dl class="row mb-0">
+            <dt class="col-5">Status</dt>
+            <dd class="col-7">
+              {{ ticket.get_status_display }}
+            </dd>
+            <dt class="col-5">Priority</dt>
+            <dd class="col-7">
+              P{{ ticket.priority }}
+            </dd>
+            <dt class="col-5">Assigned</dt>
+            <dd class="col-7">
+              {% if ticket.assigned_to %}
+                {{ ticket.assigned_to.name|default:ticket.assigned_to }}
+              {% else %}
+                <span class="text-muted">Unassigned</span>
+              {% endif %}
+            </dd>
+            <dt class="col-5">Reporter</dt>
+            <dd class="col-7">
+              {{ ticket.reporter.name|default:ticket.reporter }}
+            </dd>
+            <dt class="col-5">Event</dt>
+            <dd class="col-7">
+              {% if ticket.event %}
+                <a href="{% url 'events:event_detail' ticket.event.id %}">{{ ticket.event.title }}</a>
+              {% else %}
+                <span class="text-muted">—</span>
+              {% endif %}
+            </dd>
+            <dt class="col-5">Batch</dt>
+            <dd class="col-7">
+              {% if ticket.batch %}
+                {{ ticket.batch.name }}
+              {% else %}
+                <span class="text-muted">—</span>
+              {% endif %}
+            </dd>
+          </dl>
+        </div>
+      </div>
+      <!-- Update form -->
+      <div class="card">
+        <div class="card-body">
+          <h6>Update Ticket</h6>
+          <form method="post" action="{% url 'tickets:update_ticket' ticket.id %}">
+            {% csrf_token %}
+            {{ form.as_p }}
+            <button type="submit" class="btn btn-sm btn-primary">Save changes</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+{% endblock content %}

@@ -1,5 +1,7 @@
 # events/filters.py
 
+from openvolunteer.orgs.queryset import orgs_for_user
+
 from .models import EventStatus
 from .models import EventTemplate
 
@@ -21,8 +23,9 @@ EVENT_FILTERS = [
         "name": "type",
         "label": "Type",
         "type": "select",
-        # TODO: Filter by user memberships
-        "choices": lambda request: EventTemplate.objects.all(),
+        "choices": lambda request: EventTemplate.objects.filter(
+            org__in=orgs_for_user(request.user),
+        ),
         "lookup": "template",
     },
     {

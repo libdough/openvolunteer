@@ -1,3 +1,5 @@
+from zoneinfo import ZoneInfo
+
 from django.db import transaction
 from django.template import Context
 from django.template import Template
@@ -11,6 +13,39 @@ from .models import TicketBatch
 
 def render_template(template_str: str, context: dict) -> str:
     return Template(template_str).render(Context(context)).strip()
+
+
+# TODO: Move to another central file
+TIMEZONES = {
+    "utc": ("UTC", ZoneInfo("UTC")),
+    "est": ("EST", ZoneInfo("America/New_York")),
+    "cdt": ("CDT", ZoneInfo("America/Chicago")),
+    "pdt": ("PDT", ZoneInfo("America/Los_Angeles")),
+    "cet": ("CET", ZoneInfo("Europe/Paris")),
+}
+
+
+def format_event_times(dt):
+    """
+    Returns a dict-like object suitable for template access:
+
+    starts_at_time
+    starts_at_time.est
+    starts_at_time.cdt
+    starts_at_time.pdt
+    starts_at_time.cet
+    """
+
+    def fmt(label, tz):
+        localized = dt.astimezone(tz)
+        return f"({localized.strftime('%-I:%M %p')} {label})"
+
+    times = {}
+
+    for key, (label, tz) in TIMEZONES.items():
+        times[key] = fmt(label, tz)
+
+    return times
 
 
 # ruff: noqa: PLR0913
@@ -101,7 +136,8 @@ def generate_tickets_for_event(
             context = {
                 "event": event,
                 "org": event.org,
-                "starts_at": event.starts_at,
+                "starts_at_date": event.starts_at.strftime("%B %d, %Y"),
+                "starts_at_time": format_event_times(event.starts_at),
                 "assigned_user": None,
                 "person": None,  # lazy load below
                 "task_name": tmpl.name,
@@ -113,7 +149,10 @@ def generate_tickets_for_event(
             context["person"] = person
 
             name = render_template(tmpl.ticket_name_template, context)
-            message = render_template(tmpl.message_template, context)
+            description = render_template(
+                tmpl.description_template,
+                context,
+            )
 
             ticket = Ticket.objects.create(
                 org=event.org,
@@ -121,8 +160,7 @@ def generate_tickets_for_event(
                 event=event,
                 person=person,
                 name=name,
-                description=message,
-                instructions=tmpl.instructions,
+                description=description,
                 priority=tmpl.default_priority,
                 claimable=tmpl.claimable,
                 reporter=created_by,

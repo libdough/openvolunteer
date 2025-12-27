@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <h1 class="mb-3">Tickets</h1>
+  <div class="card shadow-sm">
+    {% include "components/filters.html" %}
+    {% if tickets %}
+      <div class="table-responsive">
+        <table class="table table-hover mb-0 align-middle">
+          <thead class="table-light">
+            <tr>
+              <th>Ticket</th>
+              <th>Event</th>
+              <th>Person</th>
+              <th>Status</th>
+              <th>Priority</th>
+              <th>Assigned</th>
+              <th>Batch</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for ticket in tickets %}
+              <tr>
+                <td>
+                  <a href="{% url 'tickets:ticket_detail' ticket.id %}"
+                     class="fw-semibold text-decoration-none">{{ ticket.name }}</a>
+                  {% if ticket.description %}<div class="text-muted small">{{ ticket.description|truncatewords:15 }}</div>{% endif %}
+                </td>
+                <td>
+                  {% if ticket.event %}
+                    <a href="{% url 'events:event_detail' ticket.event.id %}">{{ ticket.event.title }}</a>
+                  {% else %}
+                    <span class="text-muted">—</span>
+                  {% endif %}
+                </td>
+                <td>
+                  {% if ticket.person %}
+                    {{ ticket.person }}
+                  {% else %}
+                    <span class="text-muted">—</span>
+                  {% endif %}
+                </td>
+                <td>
+                  <span class="badge {% if ticket.status == 'open' %} bg-secondary {% elif ticket.status == 'todo' %} bg-info {% elif ticket.status == 'inprogress' %} bg-primary {% elif ticket.status == 'blocked' %} bg-warning text-dark {% elif ticket.status == 'completed' %} bg-success {% elif ticket.status == 'canceled' %} bg-light text-dark {% endif %} ">
+                    {{ ticket.get_status_display }}
+                  </span>
+                </td>
+                <td>
+                  <span class="badge bg-light text-dark">P{{ ticket.priority }}</span>
+                </td>
+                <td>
+                  {% if ticket.assigned_to %}
+                    {{ ticket.assigned_to.name|default:ticket.assigned_to.username }}
+                  {% else %}
+                    <span class="text-muted">Unassigned</span>
+                  {% endif %}
+                </td>
+                <td>
+                  {% if ticket.batch %}
+                    {{ ticket.batch.name }}
+                  {% else %}
+                    <span class="text-muted">—</span>
+                  {% endif %}
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <p class="text-muted">No tickets found.</p>
+    {% endif %}
+    {% include "components/pagination.html" %}
+  </div>
+{% endblock content %}

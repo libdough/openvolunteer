@@ -31,11 +31,11 @@ class TicketTemplate(models.Model):
 
     name = models.CharField(max_length=200)
 
-    message_template = models.TextField()
+    description_template = models.TextField(
+        help_text="Markdown template rendered into the ticket description",
+        default="",
+    )
     ticket_name_template = models.CharField(max_length=200)
-
-    description = models.TextField(blank=True)
-    instructions = models.TextField(blank=True)
 
     default_priority = models.PositiveSmallIntegerField(default=3)
 
@@ -122,8 +122,10 @@ class Ticket(models.Model):
     )
 
     name = models.CharField(max_length=200)
-    description = models.TextField(blank=True)
-    instructions = models.TextField(blank=True)
+    description = models.TextField(
+        blank=True,
+        help_text="Rendered markdown description for this ticket",
+    )
 
     status = models.CharField(
         max_length=20,

@@ -196,4 +196,5 @@ dependencies = [
     "uvicorn-worker==0.4.0",
     "uvicorn[standard]==0.40.0",
     "whitenoise==6.11.0",
+    "markdown==3.10.0",
 ]
