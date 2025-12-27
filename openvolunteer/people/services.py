@@ -55,9 +55,20 @@ def handle_person_csv(user, uploaded_file):
             continue
 
         email = (row.get("email") or "").strip()
-
-        # Optional de-dupe by email
+        # de-dupe by email
         if email and Person.objects.filter(email=email).exists():
+            skipped += 1
+            continue
+
+        discord = (row.get("discord") or "").strip()
+        # de-dupe by Discord
+        if discord and Person.objects.filter(discord=discord).exists():
+            skipped += 1
+            continue
+
+        phone = (row.get("phone") or "").strip()
+        # de-dupe by Phone Number
+        if phone and Person.objects.filter(phone=phone).exists():
             skipped += 1
             continue
 

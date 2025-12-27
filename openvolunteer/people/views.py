@@ -12,6 +12,8 @@ from django.shortcuts import render
 
 from openvolunteer.core.filters import apply_filters
 from openvolunteer.core.pagination import paginate
+from openvolunteer.events.models import Event
+from openvolunteer.events.models import EventStatus
 from openvolunteer.orgs.models import Membership
 from openvolunteer.orgs.models import Organization
 from openvolunteer.orgs.permissions import user_can_manage_people
@@ -70,11 +72,22 @@ def person_detail(request, person_id):
     if not user_can_view_person(request.user, person):
         raise Http404
 
+    scheduled_events = (
+        Event.objects.filter(
+            shifts__assignments__person=person,
+            event_status=EventStatus.SCHEDULED,
+        )
+        .select_related("org")
+        .distinct()
+        .order_by("starts_at")
+    )
+
     return render(
         request,
         "people/person_detail.html",
         {
             "person": person,
+            "scheduled_events": scheduled_events,
             "can_edit": user_can_edit_person(request.user, person),
         },
     )

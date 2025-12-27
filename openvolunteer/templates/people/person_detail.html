@@ -106,13 +106,54 @@
         </div>
       </div>
       <!-- Activity -->
-      <div class="card ov-card shadow-sm">
-        <div class="card-header">Activity</div>
-        <div class="card-body ov-muted">
-          Activity timeline will appear here
-          (calls, canvassing, events, notes),
-          filtered by organization context.
-        </div>
+      <div class="card shadow-sm mt-4">
+        <div class="card-header">Scheduled Events</div>
+        {% if scheduled_events %}
+          <div class="table-responsive">
+            <table class="table table-hover mb-0 align-middle">
+              <thead class="table-light">
+                <tr>
+                  <th>Event</th>
+                  <th>Date</th>
+                  <th>Organization</th>
+                  <th>Owner</th>
+                  <th>Type</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for event in scheduled_events %}
+                  <tr>
+                    <td>
+                      <a href="{% url 'events:event_detail' event.id %}"
+                         class="fw-semibold text-decoration-none">{{ event.title }}</a>
+                      {% if event.description %}<div class="text-muted small">{{ event.description|truncatewords:15 }}</div>{% endif %}
+                    </td>
+                    <td class="text-muted small">
+                      {% with start=event.starts_at end=event.ends_at %}
+                        {% include "components/datetime_range.html" %}
+                      {% endwith %}
+                    </td>
+                    <td>{{ event.org.name }}</td>
+                    <td>
+                      {% if event.owned_by %}
+                        {{ event.owned_by.name|default:event.owned_by.username }}
+                      {% else %}
+                        <span class="text-muted">—</span>
+                      {% endif %}
+                    </td>
+                    <td>{{ event.get_event_type_display }}</td>
+                    <td>
+                      <span class="badge bg-success">{{ event.get_event_status_display }}</span>
+                    </td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        {% else %}
+          <div class="text-muted mt-1 mb-1">This person is not signed up for any scheduled events.</div>
+        {% endif %}
       </div>
     </div>
   </div>
