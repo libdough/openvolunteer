@@ -118,24 +118,21 @@ def event_detail(request, event_id):
 @login_required
 def event_create(request):
     # TODO: handle perms better
-
-    org_qs = Organization.objects.filter(
-        memberships__user=request.user,
-    ).distinct()
-
     initial = {}
+
     # Allow redirect forms to specify org
-    org_id = request.GET.get("org")
-    if org_id:
-        try:
-            org = org_qs.get(id=org_id)
-            initial["org"] = org
-        except Organization.DoesNotExist:
-            pass
+    if org_id := request.GET.get("org"):
+        if Organization.objects.filter(id=org_id).exists():
+            initial["org"] = org_id
+
+    if starts := request.GET.get("starts_at"):
+        initial["starts_at"] = parse_datetime(starts)
+
+    if ends := request.GET.get("ends_at"):
+        initial["ends_at"] = parse_datetime(ends)
 
     if request.method == "POST":
-        form = EventForm(request.POST, initial=initial)
-        form.fields["org"].queryset = org_qs
+        form = EventForm(request.POST, user=request.user)
         if form.is_valid():
             org = form.cleaned_data["org"]
 
@@ -151,8 +148,9 @@ def event_create(request):
             event.save()
             return redirect("events:event_detail", event.id)
     else:
-        form = EventForm(initial=initial)
-        form.fields["org"].queryset = org_qs
+        form = EventForm(user=request.user, initial=initial)
+        if org_id and "org" in form.fields:
+            form.fields["org"].disabled = True
 
     return render(
         request,

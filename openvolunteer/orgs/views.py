@@ -348,10 +348,10 @@ def org_calendar_events(request, slug):
                 "start": e.starts_at.isoformat(),
                 "end": e.ends_at.isoformat(),
                 "url": reverse("events:event_detail", args=[e.id]),
-                "color": "#2196f3",  # blue
                 "editable": user_can_manage_events(request.user, event=e),
                 "extendedProps": {
                     "type": "event",
+                    "status": e.event_status,
                 },
             }
             for e in events_qs
@@ -372,7 +372,10 @@ def org_calendar_events(request, slug):
                 "start": s.starts_at.isoformat(),
                 "end": s.ends_at.isoformat(),
                 "url": reverse("events:event_detail", args=[s.event_id]),
-                "color": "#4caf50",  # green
+                "extendedProps": {
+                    "type": "shift",
+                    "status": s.event.event_status,
+                },
             }
             for s in shifts
         ],

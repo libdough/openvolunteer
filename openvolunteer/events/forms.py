@@ -1,5 +1,7 @@
 from django import forms
 
+from openvolunteer.orgs.models import Organization
+
 from .models import Event
 from .models import Shift
 from .models import ShiftAssignment
@@ -29,11 +31,17 @@ class EventForm(forms.ModelForm):
             ),
         }
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, user=None, **kwargs):
         super().__init__(*args, **kwargs)
 
         # owned_by should NEVER be required
         self.fields["owned_by"].required = False
+
+        if user:
+            self.fields["org"].queryset = Organization.objects.filter(
+                memberships__user=user,
+                memberships__is_active=True,
+            ).distinct()
 
     def clean(self):
         cleaned = super().clean()

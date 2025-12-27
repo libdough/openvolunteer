@@ -15,6 +15,8 @@
   </div>
   <div class="calendar"
        data-events-url="{% url 'orgs:org_calendar_events' slug=org.slug %}"
-       data-can-edit="{{ can_manage_events|yesno:'true,false' }}"></div>
+       data-can-edit="{{ can_manage_events|yesno:'true,false' }}"
+       data-create-url="{% url 'events:event_create' %}"
+       data-org-id="{{ org.id }}"></div>
   {% include "components/calendar.html" %}
 {% endblock content %}

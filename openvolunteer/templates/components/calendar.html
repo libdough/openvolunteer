@@ -7,6 +7,38 @@
        Helpers
        =============================== */
 
+    const EVENT_STATUS_STYLES = {
+      draft: {
+        backgroundColor: "#e5e7eb",
+        borderColor: "#9ca3af",
+        textColor: "#374151",
+        icon: "📝",
+        label: "Draft",
+      },
+      scheduled: {
+        backgroundColor: "#2563eb",
+        borderColor: "#1e40af",
+        textColor: "#ffffff",
+      },
+      finished: {
+        backgroundColor: "#6b7280",
+        borderColor: "#4b5563",
+        textColor: "#ffffff",
+      },
+      cancelled: {
+        backgroundColor: "#dc2626",
+        borderColor: "#991b1b",
+        textColor: "#ffffff",
+      },
+    };
+
+    const SHIFT_STYLE = {
+      backgroundColor: "#4caf50",
+      borderColor: "#2d6930",
+      textColor: "#ffffff",
+    }
+
+
     function updateEventTimes(info) {
       info.el.classList.add("opacity-50");
 
@@ -35,6 +67,8 @@
     function buildCalendar(el) {
       const isMini = el.classList.contains("mini-calendar");
       const canEdit = el.dataset.canEdit === "true";
+      const createUrl = el.dataset.createUrl;
+      const orgId = el.dataset.orgId;
 
       return new FullCalendar.Calendar(el, {
         initialView: "dayGridMonth",
@@ -55,9 +89,24 @@
 
         editable: canEdit,
         selectable: canEdit,
+        selectMirror: true,
+        unselectAuto: true,
         eventStartEditable: canEdit,
         eventDurationEditable: canEdit,
         eventResizableFromStart: canEdit,
+
+        select(info) {
+          if (!canEdit) return;
+
+          const params = new URLSearchParams({
+            org: el.dataset.orgId,
+            starts_at: info.start.toISOString(),
+            ends_at: (info.end || info.start).toISOString(),
+          });
+
+          window.location.href =
+            `${el.dataset.createUrl}?${params.toString()}`;
+        },
 
         slotDuration: "00:15:00",
         snapDuration: "00:15:00",
@@ -68,12 +117,27 @@
         eventDrop: updateEventTimes,
         eventResize: updateEventTimes,
 
-        eventClick(info) {
-          if (info.view.type === "dayGridMonth") {
-            info.jsEvent.preventDefault();
-            info.view.calendar.changeView("timeGridDay", info.event.start);
+        eventDidMount(info) {
+          const type = info.event.extendedProps.type;
+          const status = info.event.extendedProps.status;
+          const style = type === "event" ? EVENT_STATUS_STYLES[status] : SHIFT_STYLE;
+
+          if (!style) return;
+
+          // Apply colors
+          info.el.style.backgroundColor = style.backgroundColor;
+          info.el.style.borderColor = style.borderColor;
+          info.el.style.color = style.textColor;
+
+          // Draft indicator
+          if (status === "draft") {
+            const titleEl = info.el.querySelector(".fc-event-title");
+            if (titleEl && !titleEl.dataset.draftApplied) {
+              titleEl.innerHTML = `${style.icon} ${style.label}: ${titleEl.innerHTML}`;
+              titleEl.dataset.draftApplied = "true";
+            }
           }
-        },
+        }
       });
     }
 
