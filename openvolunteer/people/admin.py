@@ -1,12 +1,68 @@
 #!/usr/bin/env python3
 from django.contrib import admin
+from django.contrib import messages
+from django.shortcuts import redirect
+from django.shortcuts import render
 from django.utils.html import format_html
 from django.utils.html import format_html_join
 
+from .forms import PersonOrgAssignForm
 from .models import Person
 from .models import PersonOrganization
 from .models import PersonTag
 from .models import PersonTagging
+
+
+@admin.action(description="Assign all selected people to the same org")
+def mass_join_org(modeladmin, request, queryset):
+    """
+    Admin action to assign selected people to one or more organizations.
+    Uses a standard admin confirmation form (no custom JS).
+    """
+
+    if "apply" in request.POST:
+        form = PersonOrgAssignForm(request.POST)
+        if form.is_valid():
+            orgs = form.cleaned_data["organizations"]
+
+            created = 0
+            reactivated = 0
+
+            for person in queryset:
+                for org in orgs:
+                    link, was_created = PersonOrganization.objects.get_or_create(
+                        person=person,
+                        org=org,
+                        defaults={"is_active": True},
+                    )
+                    if was_created:
+                        created += 1
+                    elif not link.is_active:
+                        link.is_active = True
+                        link.save(update_fields=["is_active"])
+                        reactivated += 1
+
+            messages.success(
+                request,
+                f"Assigned {queryset.count()} people to "
+                f"{orgs.count()} org(s). "
+                f"({created} new, {reactivated} reactivated)",
+            )
+            return redirect(request.get_full_path())
+
+    else:
+        form = PersonOrgAssignForm()
+
+    return render(
+        request,
+        "admin/people/mass_join_org.html",
+        {
+            "title": "Assign selected people to organizations",
+            "people": queryset,
+            "form": form,
+            "action_checkbox_name": admin.helpers.ACTION_CHECKBOX_NAME,
+        },
+    )
 
 
 # Inline for editing tags on a Person
@@ -112,6 +168,7 @@ class PersonAdmin(admin.ModelAdmin):
     )
     search_fields = ("full_name", "discord", "email", "phone")
     ordering = ("full_name",)
+    actions = [mass_join_org]
     list_filter = (
         OrganizationMembershipFilter,
         TagMembershipFilter,

@@ -140,6 +140,14 @@ class PersonForm(forms.ModelForm):
         return person
 
 
+# For admin use only
+class PersonOrgAssignForm(forms.Form):
+    organizations = forms.ModelMultipleChoiceField(
+        queryset=Organization.objects.all(),
+        required=False,
+    )
+
+
 class PersonCSVUploadForm(forms.Form):
     csv_file = forms.FileField(
         help_text="Upload a CSV file with people data",

@@ -1,0 +1,26 @@
+{% extends "admin/base_site.html" %}
+
+{% load i18n admin_urls %}
+
+{% block content %}
+  <h1>{{ title }}</h1>
+  <p>
+    You are about to assign <strong>{{ people|length }}</strong> people
+    to one or more organizations.
+  </p>
+  <form method="post">
+    {% csrf_token %}
+    {{ form.as_p }}
+    {% for person in people %}
+      <input type="hidden"
+             name="{{ action_checkbox_name }}"
+             value="{{ person.pk }}" />
+    {% endfor %}
+    <input type="hidden" name="action" value="mass_join_org" />
+    <input type="hidden" name="apply" value="1" />
+    <div class="submit-row">
+      <input type="submit" value="Apply" class="default" />
+      <a href=".." class="button cancel-link">{% trans "Cancel" %}</a>
+    </div>
+  </form>
+{% endblock content %}
