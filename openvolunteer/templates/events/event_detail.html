@@ -31,9 +31,13 @@
             <strong>Organization:</strong>
             {{ event.org.name }}
           </div>
-          <div>
+          <div class="mb-3">
             <strong>Event Type:</strong>
             {{ event.get_event_type_display }}
+          </div>
+          <div>
+            <strong>Event Status:</strong>
+            {{ event.get_event_status_display }}
           </div>
         </div>
       </div>

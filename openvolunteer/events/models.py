@@ -20,6 +20,7 @@ class EventStatus(models.TextChoices):
     DRAFT = "draft", "Draft"
     SCHEDULED = "scheduled", "Scheduled"
     FINISHED = "finished", "Finished"
+    CANCELED = "canceled", "Canceled"
 
 
 class Event(models.Model):
@@ -60,6 +61,12 @@ class Event(models.Model):
         related_name="events_created",
     )
     created_at = models.DateTimeField(auto_now_add=True)
+    modified_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["event_status", "modified_at"]),
+        ]
 
     def __str__(self):
         return self.title
