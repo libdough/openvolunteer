@@ -24,6 +24,42 @@
           <div class="markdown-body">{{ ticket.description|render_markdown|safe }}</div>
         </div>
       </div>
+      <!-- Activity -->
+      <div class="card mt-4">
+        <div class="card-header">
+          <strong>Activity</strong>
+        </div>
+        <div class="card-body p-0">
+          {% if ticket.audit_logs.exists %}
+            <ul class="list-group list-group-flush">
+              {% for log in ticket.audit_logs.all %}
+                <li class="list-group-item small">
+                  <div class="d-flex justify-content-between">
+                    <span>
+                      {% if log.success %}
+                        <span class="text-success">●</span>
+                      {% else %}
+                        <span class="text-danger">●</span>
+                      {% endif %}
+                      {{ log.message }}
+                    </span>
+                    <span class="text-muted">{{ log.created_at|date:"M d, H:i" }}</span>
+                  </div>
+                  <div class="text-muted">
+                    {% if log.actor %}
+                      {{ log.actor }}
+                    {% else %}
+                      System
+                    {% endif %}
+                  </div>
+                </li>
+              {% endfor %}
+            </ul>
+          {% else %}
+            <div class="p-3 text-muted text-center">No activity yet.</div>
+          {% endif %}
+        </div>
+      </div>
     </div>
     <!-- Sidebar -->
     <div class="col-md-4">

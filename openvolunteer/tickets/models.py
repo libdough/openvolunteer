@@ -202,3 +202,56 @@ class Ticket(models.Model):
     @property
     def is_closed(self):
         return self.status in {TicketStatus.COMPLETED, TicketStatus.CANCELED}
+
+
+class TicketAuditEvent(models.TextChoices):
+    CREATED = "created", "Ticket created"
+    UPDATED = "updated", "Ticket updated"
+    CLAIMED = "claimed", "Ticket claimed"
+    UNCLAIMED = "unclaimed", "Ticket unclaimed"
+    STATUS_CHANGED = "status_changed", "Status changed"
+    ACTION_RUN = "action_run", "Action executed"
+    ACTION_FAILED = "action_failed", "Action failed"
+    SYSTEM = "system", "System event"
+
+
+class TicketAuditLog(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+
+    ticket = models.ForeignKey(
+        "tickets.Ticket",
+        on_delete=models.CASCADE,
+        related_name="audit_logs",
+    )
+
+    event_type = models.CharField(
+        max_length=50,
+        choices=TicketAuditEvent,
+    )
+
+    message = models.TextField()
+
+    actor = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="ticket_audit_logs",
+        help_text="Null means system",
+    )
+
+    metadata = models.JSONField(
+        blank=True,
+        default=dict,
+        help_text="Optional structured context",
+    )
+
+    success = models.BooleanField(default=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.ticket} - {self.event_type}"

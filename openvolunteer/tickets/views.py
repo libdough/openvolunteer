@@ -10,9 +10,12 @@ from openvolunteer.core.filters import apply_filters
 from openvolunteer.core.pagination import paginate
 from openvolunteer.orgs.queryset import orgs_for_user
 
+from .actions.utils import reset_ticket_actions
+from .audit import log_ticket_event
 from .filters import TICKET_FILTERS
 from .forms import TicketUpdateForm
 from .models import Ticket
+from .models import TicketAuditEvent
 from .models import TicketStatus
 
 
@@ -77,6 +80,12 @@ def claim_ticket(request, ticket_id):
     ticket.assigned_to = request.user
     ticket.status = TicketStatus.TODO
     ticket.save()
+    log_ticket_event(
+        ticket=ticket,
+        event_type=TicketAuditEvent.CLAIMED,
+        message=f"Ticket claimed by {request.user}",
+        actor=request.user,
+    )
 
     messages.success(request, "You have claimed this ticket.")
     return redirect("tickets:ticket_detail", ticket_id=ticket.id)
@@ -94,6 +103,15 @@ def unclaim_ticket(request, ticket_id):
         ticket.status = TicketStatus.OPEN
     ticket.save()
 
+    reset_ticket_actions(ticket)
+
+    log_ticket_event(
+        ticket=ticket,
+        event_type=TicketAuditEvent.UNCLAIMED,
+        message="Ticket unclaimed",
+        actor=request.user,
+    )
+
     messages.success(request, "Ticket has been unassigned.")
     return redirect("tickets:ticket_detail", ticket_id=ticket.id)
 
@@ -108,9 +126,35 @@ def update_ticket(request, ticket_id):
     form = TicketUpdateForm(request.POST, instance=ticket)
 
     if form.is_valid():
+        changed_fields = {
+            field: form.cleaned_data[field] for field in form.changed_data
+        }
+
         form.save()
+
+        if changed_fields:
+            log_ticket_event(
+                ticket=ticket,
+                event_type=TicketAuditEvent.UPDATED,
+                actor=request.user,
+                message="Ticket updated",
+                metadata={
+                    "changed_fields": changed_fields,
+                },
+            )
         messages.success(request, "Ticket updated.")
     else:
+        log_ticket_event(
+            ticket=ticket,
+            event_type=TicketAuditEvent.UPDATED,
+            actor=request.user,
+            success=False,
+            message="Ticket update failed due to validation errors",
+            metadata={
+                "errors": form.errors,
+            },
+        )
+
         messages.error(request, f"Please correct the errors: {form.errors}")
 
     return redirect("tickets:ticket_detail", ticket_id=ticket.id)

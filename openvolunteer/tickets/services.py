@@ -7,7 +7,9 @@ from django.template import Template
 from openvolunteer.events.models import ShiftAssignment
 
 from .actions.models import TicketAction
+from .audit import log_ticket_event
 from .models import Ticket
+from .models import TicketAuditEvent
 from .models import TicketBatch
 
 
@@ -200,6 +202,17 @@ def generate_tickets_for_event(
             create_actions_for_ticket(
                 ticket=ticket,
                 ticket_template=tmpl,
+            )
+
+            log_ticket_event(
+                ticket=ticket,
+                event_type=TicketAuditEvent.CREATED,
+                message="Ticket created",
+                actor=created_by,
+                metadata={
+                    "template": tmpl.name,
+                    "batch": str(batch.id),
+                },
             )
 
             tickets.append(ticket)
