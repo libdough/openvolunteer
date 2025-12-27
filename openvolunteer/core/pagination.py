@@ -15,6 +15,7 @@ def paginate(request, queryset, per_page=25):
         page_obj = paginator.page(paginator.num_pages)
 
     return {
+        "total_count": paginator.count,
         "paginator": paginator,
         "page_obj": page_obj,
         "is_paginated": paginator.num_pages > 1,

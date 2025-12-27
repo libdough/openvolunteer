@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+
+{% block title %}
+  Upload People
+{% endblock title %}
+{% block content %}
+  <div class="container-sm">
+    <h1 class="mb-3">Upload People (CSV)</h1>
+    <div class="alert alert-info">
+      <strong>CSV columns:</strong>
+      <br />
+      <code>full_name</code> (required), <code>email</code>, <code>phone</code>,
+      <code>discord</code>, <code>orgs</code>, <code>tags</code>
+      <br />
+      Use <code>|</code> to separate multiple orgs or tags.
+    </div>
+    <form method="post" enctype="multipart/form-data" id="upload-form">
+      {% csrf_token %}
+      <!-- Drag & Drop Zone -->
+      <div id="drop-zone"
+           class="border border-2 border-dashed rounded p-4 text-center mb-3">
+        <div class="mb-2 fs-4">📄</div>
+        <p class="mb-1" id="drop-zone-text">
+          <strong>Drag & drop your CSV here</strong>
+        </p>
+        <p class="text-muted mb-2">or click to browse</p>
+        {{ form.csv_file }}
+      </div>
+      <div class="d-flex gap-2">
+        <button class="btn btn-primary">Upload</button>
+        <a href="{% url 'people:person_list' %}" class="btn btn-secondary">Cancel</a>
+      </div>
+    </form>
+  </div>
+  <script>
+    (function() {
+      const dropZone = document.getElementById("drop-zone");
+      const fileInput = dropZone.querySelector('input[type="file"]');
+      const text = document.getElementById("drop-zone-text");
+
+      function markSelected(files) {
+        if (files.length > 0) {
+          dropZone.classList.add("file-selected");
+          text.innerHTML = `<strong>Selected:</strong> ${files[0].name}`;
+        } else {
+          dropZone.classList.remove("file-selected");
+          text.innerHTML = `<strong>Drag & drop your CSV here</strong>`;
+        }
+      }
+
+      dropZone.addEventListener("click", () => {
+        fileInput.click();
+      });
+
+      fileInput.addEventListener("change", () => {
+        markSelected(fileInput.files);
+      });
+
+      dropZone.addEventListener("dragover", (e) => {
+        e.preventDefault();
+        dropZone.classList.add("dragover");
+      });
+
+      dropZone.addEventListener("dragleave", () => {
+        dropZone.classList.remove("dragover");
+      });
+
+      dropZone.addEventListener("drop", (e) => {
+        e.preventDefault();
+        dropZone.classList.remove("dragover");
+
+        if (e.dataTransfer.files.length > 0) {
+          fileInput.files = e.dataTransfer.files;
+          markSelected(e.dataTransfer.files);
+        }
+      });
+    })();
+  </script>
+{% endblock content %}

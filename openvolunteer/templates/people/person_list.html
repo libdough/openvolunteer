@@ -7,10 +7,14 @@
   <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
       <h1 class="mb-0">People</h1>
-      <small class="text-muted">{{ people|length }} total</small>
+      <small class="text-muted">{{ total_count }} total</small>
     </div>
     {% if can_edit %}
-      <a href="{% url 'people:person_create' %}" class="btn btn-primary">➕ Add person</a>
+      <div class="btn-group">
+        <a href="{% url 'people:person_create' %}" class="btn btn-primary">➕ Add person</a>
+        <a href="{% url 'people:person_upload' %}"
+           class="btn btn-outline-primary">⬆ Upload CSV</a>
+      </div>
     {% endif %}
   </div>
   <div class="card shadow-sm">

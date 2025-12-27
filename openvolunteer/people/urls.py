@@ -13,4 +13,5 @@ urlpatterns = [
         views.person_form,
         name="person_edit",
     ),
+    path("upload/", views.person_upload_csv, name="person_upload"),
 ]

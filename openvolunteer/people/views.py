@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.http import Http404
 from django.shortcuts import get_object_or_404
@@ -12,11 +13,13 @@ from openvolunteer.orgs.models import Organization
 from openvolunteer.orgs.permissions import user_can_manage_people
 
 from .filters import PERSON_FILTERS
+from .forms import PersonCSVUploadForm
 from .forms import PersonForm
 from .models import Person
 from .permissions import user_can_create_person
 from .permissions import user_can_edit_person
 from .permissions import user_can_view_person
+from .services import handle_person_csv
 
 
 @login_required
@@ -137,4 +140,31 @@ def person_form(request, person_id=None):
             "selected_tag_ids": selected_tag_ids,
             "selected_org_ids": selected_org_ids,
         },
+    )
+
+
+@login_required
+def person_upload_csv(request):
+    if not user_can_create_person(request.user):
+        raise Http404
+
+    if request.method == "POST":
+        form = PersonCSVUploadForm(request.POST, request.FILES)
+        if form.is_valid():
+            created, skipped = handle_person_csv(
+                request.user,
+                request.FILES["csv_file"],
+            )
+            messages.success(
+                request,
+                f"Created {created} people. Skipped {skipped}.",
+            )
+            return redirect("people:person_list")
+    else:
+        form = PersonCSVUploadForm()
+
+    return render(
+        request,
+        "people/person_upload.html",
+        {"form": form},
     )

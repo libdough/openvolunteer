@@ -140,6 +140,12 @@ class PersonForm(forms.ModelForm):
         return person
 
 
+class PersonCSVUploadForm(forms.Form):
+    csv_file = forms.FileField(
+        help_text="Upload a CSV file with people data",
+    )
+
+
 class PersonTagForm(forms.ModelForm):
     color = forms.CharField(widget=forms.TextInput(attrs={"type": "color"}))
 
