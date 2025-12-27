@@ -15,7 +15,7 @@ class ShiftAssignmentInline(admin.TabularInline):
     model = ShiftAssignment
     extra = 0
     autocomplete_fields = ["person"]
-    fields = ("person", "checked_in_at")
+    fields = ("person", "status", "checked_in_at")
     readonly_fields = ("checked_in_at",)
     show_change_link = True
 

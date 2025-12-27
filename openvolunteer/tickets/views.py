@@ -90,7 +90,8 @@ def unclaim_ticket(request, ticket_id):
         return HttpResponseForbidden("You cannot unclaim this ticket.")
 
     ticket.assigned_to = None
-    ticket.status = TicketStatus.OPEN
+    if not ticket.is_closed:
+        ticket.status = TicketStatus.OPEN
     ticket.save()
 
     messages.success(request, "Ticket has been unassigned.")

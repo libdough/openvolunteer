@@ -165,6 +165,14 @@ class Shift(models.Model):
         return self._state.adding
 
 
+class ShiftAssignmentStatus(models.TextChoices):
+    INIT = "init", "Initialized"
+    PENDING = "pending", "Pending confirmation"
+    DECLINED = "declined", "Declined"
+    PARTIAL = "partial", "Partially committed"
+    CONFIRMED = "confirmed", "Fully committed"
+
+
 class ShiftAssignment(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
 
@@ -186,15 +194,24 @@ class ShiftAssignment(models.Model):
         blank=True,
     )
 
+    status = models.CharField(
+        max_length=20,
+        choices=ShiftAssignmentStatus,
+        default=ShiftAssignmentStatus.INIT,
+        db_index=True,
+    )
+
     checked_in_at = models.DateTimeField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
+    modified_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         unique_together = [("shift", "person")]
         indexes = [
             models.Index(fields=["shift"]),
             models.Index(fields=["person"]),
+            models.Index(fields=["status"]),
         ]
 
     def __str__(self):
-        return f"{self.person.full_name} <-> {self.shift}"
+        return f"{self.person.full_name} <-> {self.shift} ({self.get_status_display()})"

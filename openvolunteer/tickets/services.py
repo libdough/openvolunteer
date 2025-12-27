@@ -5,8 +5,8 @@ from django.template import Context
 from django.template import Template
 
 from openvolunteer.events.models import ShiftAssignment
-from openvolunteer.people.models import Person
 
+from .actions.models import TicketAction
 from .models import Ticket
 from .models import TicketBatch
 
@@ -48,6 +48,28 @@ def format_event_times(dt):
     return times
 
 
+def create_actions_for_ticket(*, ticket, ticket_template):
+    """
+    Instantiate TicketActions from TicketActionTemplates.
+    """
+    action_templates = ticket_template.action_templates.filter(is_active=True)
+
+    actions = [
+        TicketAction(
+            ticket=ticket,
+            template=action_tmpl,
+            label=action_tmpl.label,
+            action_type=action_tmpl.action_type,
+            button_color=action_tmpl.button_color,
+            updates_ticket_status=action_tmpl.updates_ticket_status,
+            config=action_tmpl.config,
+        )
+        for action_tmpl in action_templates
+    ]
+
+    TicketAction.objects.bulk_create(actions)
+
+
 # ruff: noqa: PLR0913
 @transaction.atomic
 def generate_tickets_for_event(
@@ -78,6 +100,10 @@ def generate_tickets_for_event(
     :param include_default_shift: Whether default shift assignments count
     """
 
+    """
+    Generate a TicketBatch + Tickets for an Event.
+    """
+
     if not event.template:
         msg = "Event has no EventTemplate"
         raise ValueError(msg)
@@ -87,27 +113,30 @@ def generate_tickets_for_event(
 
     if not ticket_templates.exists():
         msg = "No active TicketTemplates attached to EventTemplate"
-        raise ValueError(msg)
+        raise ValueError
 
     # --------------------
-    # Resolve people
+    # Resolve assignments / people
     # --------------------
 
-    assignments = ShiftAssignment.objects.filter(
+    assignments_qs = ShiftAssignment.objects.filter(
         shift__event=event,
-    )
+    ).select_related("shift", "person")
 
     if not include_default_shift:
-        assignments = assignments.exclude(shift__is_default=True)
+        assignments_qs = assignments_qs.exclude(shift__is_default=True)
 
     if person_queryset is not None:
-        assignments = assignments.filter(person__in=person_queryset)
+        assignments_qs = assignments_qs.filter(person__in=person_queryset)
 
-    people = assignments.values_list("person", flat=True).distinct()
+    assignments = list(assignments_qs)
 
-    if not people:
+    if not assignments:
         msg = "No assigned people found for event"
         raise ValueError(msg)
+
+    # Map person_id → assignment
+    assignment_by_person_id = {a.person_id: a for a in assignments}
 
     # --------------------
     # Create batch
@@ -128,25 +157,26 @@ def generate_tickets_for_event(
     tickets = []
 
     for tmpl in ticket_templates:
-        if tmpl.max_tickets and tmpl.max_tickets < len(people):
+        if tmpl.max_tickets and tmpl.max_tickets < len(assignment_by_person_id):
             msg = f"TicketTemplate '{tmpl.name}' max_tickets exceeded"
             raise ValueError(msg)
 
-        for person_id in people:
+        for assignment in assignment_by_person_id.values():
+            person = assignment.person
+
+            shift = assignment.shift if assignment else event.default_shift()
+
             context = {
                 "event": event,
                 "org": event.org,
                 "starts_at_date": event.starts_at.strftime("%B %d, %Y"),
                 "starts_at_time": format_event_times(event.starts_at),
+                "shift": shift,
                 "assigned_user": None,
-                "person": None,  # lazy load below
+                "person": person,
                 "task_name": tmpl.name,
                 "task_type": event.template.name,
             }
-
-            # Lazy-load person only if template needs it
-            person = Person.objects.get(id=person_id)
-            context["person"] = person
 
             name = render_template(tmpl.ticket_name_template, context)
             description = render_template(
@@ -158,12 +188,18 @@ def generate_tickets_for_event(
                 org=event.org,
                 batch=batch,
                 event=event,
+                shift=shift,
                 person=person,
                 name=name,
                 description=description,
                 priority=tmpl.default_priority,
                 claimable=tmpl.claimable,
                 reporter=created_by,
+            )
+
+            create_actions_for_ticket(
+                ticket=ticket,
+                ticket_template=tmpl,
             )
 
             tickets.append(ticket)

@@ -37,6 +37,12 @@ class TicketTemplate(models.Model):
     )
     ticket_name_template = models.CharField(max_length=200)
 
+    action_templates = models.ManyToManyField(
+        "tickets.TicketActionTemplate",
+        blank=True,
+        related_name="ticket_templates",
+    )
+
     default_priority = models.PositiveSmallIntegerField(default=3)
 
     is_active = models.BooleanField(default=True)
@@ -66,6 +72,16 @@ class TicketBatch(models.Model):
         blank=True,
         on_delete=models.SET_NULL,
         related_name="ticket_batches",
+    )
+
+    shift = models.ForeignKey(
+        "events.Shift",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="ticket_batches",
+        related_query_name="ticket_batch",
+        help_text="Shift this ticket applies to; defaults to event default shift",
     )
 
     name = models.CharField(max_length=200)
@@ -111,6 +127,15 @@ class Ticket(models.Model):
         blank=True,
         on_delete=models.SET_NULL,
         related_name="tickets",
+    )
+
+    shift = models.ForeignKey(
+        "events.Shift",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="tickets",
+        help_text="Shift this ticket applies to; defaults to event default shift",
     )
 
     person = models.ForeignKey(

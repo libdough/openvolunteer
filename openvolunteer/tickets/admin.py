@@ -2,6 +2,7 @@
 from django.contrib import admin
 from django.utils.html import format_html
 
+from .actions.models import TicketActionTemplate
 from .models import Ticket
 from .models import TicketBatch
 from .models import TicketStatus
@@ -23,6 +24,8 @@ class TicketTemplateAdmin(admin.ModelAdmin):
         "event_template_count",
         "modified_at",
     )
+    search_fields = ("name",)
+    filter_horizontal = ("action_templates",)
 
     readonly_fields = (
         "created_at",
@@ -47,6 +50,16 @@ class TicketTemplateAdmin(admin.ModelAdmin):
                 "fields": (
                     "ticket_name_template",
                     "description_template",
+                ),
+            },
+        ),
+        (
+            "Actions",
+            {
+                "fields": ("action_templates",),
+                "description": (
+                    "Actions define what the assigned user can do from tickets "
+                    "created from this template."
                 ),
             },
         ),
@@ -311,3 +324,50 @@ class TicketAdmin(admin.ModelAdmin):
     @admin.action(description="Unassign tickets")
     def unassign(self, request, queryset):
         queryset.update(assigned_to=None)
+
+
+@admin.register(TicketActionTemplate)
+class TicketActionTemplateAdmin(admin.ModelAdmin):
+    list_display = (
+        "label",
+        "action_type",
+        "button_color",
+        "updates_ticket_status",
+        "is_active",
+    )
+    list_filter = (
+        "action_type",
+        "is_active",
+    )
+    search_fields = (
+        "label",
+        "description",
+    )
+
+    fieldsets = (
+        (
+            None,
+            {
+                "fields": (
+                    "label",
+                    "action_type",
+                    "button_color",
+                    "description",
+                    "is_active",
+                ),
+            },
+        ),
+        (
+            "Behavior",
+            {
+                "fields": (
+                    "config",
+                    "updates_ticket_status",
+                ),
+                "description": (
+                    "Configure how this action behaves and whether it updates "
+                    "the ticket status when completed."
+                ),
+            },
+        ),
+    )
