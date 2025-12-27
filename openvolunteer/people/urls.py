@@ -14,4 +14,5 @@ urlpatterns = [
         name="person_edit",
     ),
     path("upload/", views.person_upload_csv, name="person_upload"),
+    path("search/", views.person_search, name="person_search"),
 ]

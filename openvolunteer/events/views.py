@@ -277,25 +277,17 @@ def shift_assign_people(request, shift_id):
     if not user_can_assign_people(request.user, shift.event):
         raise Http404
 
-    # People already in org
-    people_qs = Person.objects.filter(
-        org_links__org=shift.event.org,
-    ).distinct()
-
     assigned_ids = set(
         shift.assignments.values_list("person_id", flat=True),
     )
 
     if request.method == "POST":
-        all_person_ids = request.POST.getlist("all_people")
-        add_person_ids = request.POST.getlist("add_people")
-        remove_person_ids = request.POST.getlist("remove_people")
-
-        # diff-based update
-        to_add = (set(all_person_ids) - assigned_ids) | set(add_person_ids)
-        to_remove = (assigned_ids - set(map(uuid.UUID, all_person_ids))) | set(
-            remove_person_ids,
+        submitted_ids = set(
+            map(uuid.UUID, request.POST.getlist("people")),
         )
+
+        to_add = submitted_ids - assigned_ids
+        to_remove = assigned_ids - submitted_ids
 
         ShiftAssignment.objects.filter(
             shift=shift,
@@ -318,12 +310,17 @@ def shift_assign_people(request, shift_id):
 
         return redirect("events:event_detail", shift.event.id)
 
+    # only used to preload selected names
+    people = Person.objects.filter(
+        id__in=assigned_ids,
+    )
+
     return render(
         request,
         "events/shift_assign.html",
         {
             "shift": shift,
-            "people": people_qs,
+            "people": people,
             "assigned_ids": assigned_ids,
         },
     )

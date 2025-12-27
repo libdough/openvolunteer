@@ -2,6 +2,7 @@
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.messages.views import SuccessMessageMixin
+from django.core.exceptions import PermissionDenied
 from django.db.models import Q
 from django.db.models import QuerySet
 from django.http import JsonResponse
@@ -59,6 +60,9 @@ def user_search(request):
     Intended for admin/org-admin use.
     """
     # TODO: limit user search permissions
+    if not (request.user.is_staff or request.user.is_superuser):
+        msg = "You do not have permission to search users"
+        raise PermissionDenied(msg)
     q = request.GET.get("q", "").strip()
 
     if len(q) < MIN_SEARCH_QUERY_LEN:

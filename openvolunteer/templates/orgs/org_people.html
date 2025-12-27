@@ -13,14 +13,14 @@
     <!-- ADD PERSON -->
     <div class="col-lg-4">
       <div class="card shadow-sm">
-        <div class="card-header">Add existing person</div>
+        <div class="card-header">Add Existing People</div>
         <div class="card-body">
           <form method="post">
             {% csrf_token %}
-            {{ form.person.label_tag }}
-            {{ form.person }}
-            {{ form.person.errors }}
-            <button type="submit" name="add_person" class="btn btn-primary btn-sm mt-3">➕ Add</button>
+            {% with exclude_org_id=org.id input_name="people" placeholder="Search people to add…" %}
+              {% include "components/person_selector.html" %}
+            {% endwith %}
+            <button type="submit" name="add_people" class="btn btn-primary btn-sm mt-3">➕ Add selected</button>
           </form>
         </div>
       </div>

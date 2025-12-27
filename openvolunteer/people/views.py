@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.core.exceptions import PermissionDenied
+from django.db.models import Q
 from django.http import Http404
+from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
 from django.shortcuts import redirect
 from django.shortcuts import render
@@ -167,4 +170,98 @@ def person_upload_csv(request):
         request,
         "people/person_upload.html",
         {"form": form},
+    )
+
+
+MIN_SEARCH_QUERY_LEN = 2
+MAX_RESULTS = 10
+
+
+@login_required
+def person_search(request):
+    """
+    Search people by name / email / phone / discord / tags.
+    Intended for org-admin / staff use.
+    """
+    user = request.user
+
+    # ---- Permission gate ----
+    if not (user.is_staff or user.is_superuser):
+        if not Membership.objects.filter(
+            user=user,
+            is_active=True,
+        ).exists():
+            msg = "You do not have permission to search people."
+            raise PermissionDenied(msg)
+
+    q = request.GET.get("q", "").strip()
+    org_id = request.GET.get("org_id")
+    exclude_org_id = request.GET.get("exclude_org_id")
+
+    if len(q) < MIN_SEARCH_QUERY_LEN:
+        return JsonResponse({"results": []})
+
+    people = Person.objects.all()
+
+    # ---- Visibility scoping ----
+    if not (user.is_staff or user.is_superuser):
+        org_ids = Membership.objects.filter(
+            user=user,
+            role__in=["owner", "admin", "organizer"],
+            is_active=True,
+        ).values_list("org_id", flat=True)
+
+        people = people.filter(
+            org_links__org_id__in=org_ids,
+            org_links__is_active=True,
+        )
+
+    # ---- Optional include org scope ----
+    if org_id:
+        people = people.filter(
+            org_links__org_id=org_id,
+            org_links__is_active=True,
+        )
+
+    # ---- Optional exclude org scope ----
+    if exclude_org_id:
+        people = people.exclude(
+            org_links__org_id=exclude_org_id,
+            org_links__is_active=True,
+        )
+
+    people = (
+        people.filter(
+            Q(full_name__icontains=q)
+            | Q(email__icontains=q)
+            | Q(phone__icontains=q)
+            | Q(discord__icontains=q)
+            | Q(taggings__tag__name__icontains=q),
+        )
+        .distinct()
+        .order_by("full_name")[:MAX_RESULTS]
+    )
+
+    people = people.prefetch_related("taggings__tag")
+
+    return JsonResponse(
+        {
+            "results": [
+                {
+                    "id": str(person.id),
+                    "name": person.full_name,
+                    "email": person.email if user.is_staff else None,
+                    "phone": person.phone if user.is_staff else None,
+                    "discord": person.discord,
+                    "tags": [
+                        {
+                            "name": t.tag.name,
+                            "color": t.tag.color_hex,
+                        }
+                        for t in person.taggings.all()
+                    ],
+                }
+                for person in people
+            ],
+        },
     )

@@ -34,7 +34,7 @@ def filter_is_active(qs, request, value):
 MEMBERSHIP_FILTERS = [
     {
         "name": "q",
-        "label": "Search User",
+        "label": "Search Members",
         "type": "text",
         "filter": search_memberships,
     },
@@ -91,7 +91,7 @@ def filter_has_discord(qs, request, value):
 PERSON_ORG_FILTERS = [
     {
         "name": "q",
-        "label": "Search Person",
+        "label": "Search Members",
         "type": "text",
         "filter": search_people_orgs,
     },

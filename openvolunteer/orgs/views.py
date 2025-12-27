@@ -25,7 +25,6 @@ from openvolunteer.users.models import User
 from .filters import MEMBERSHIP_FILTERS
 from .filters import PERSON_ORG_FILTERS
 from .forms import AddMemberForm
-from .forms import AddPersonToOrgForm
 from .forms import OrganizationForm
 from .forms import UpdateMemberRoleForm
 from .models import Membership
@@ -284,32 +283,48 @@ def org_people(request, slug):
     if not user_can_manage_people(request.user, org):
         raise Http404
 
-    people_links = org.people_links.select_related("person").order_by(
-        "person__full_name",
+    people_links = (
+        org.people_links.select_related("person")
+        .prefetch_related("person__taggings__tag")
+        .order_by("person__full_name")
     )
 
     if request.method == "POST":
-        if "add_person" in request.POST:
-            form = AddPersonToOrgForm(request.POST, org=org)
-            if form.is_valid():
-                PersonOrganization.objects.update_or_create(
-                    org=org,
-                    person=form.cleaned_data["person"],
-                    defaults={"is_active": True},
-                )
-                return redirect("orgs:org_people", slug=slug)
+        # ---- ADD PEOPLE (new selector) ----
+        if "add_people" in request.POST:
+            person_ids = request.POST.getlist("people")
 
-        elif "remove_person" in request.POST:
+            if person_ids:
+                PersonOrganization.objects.bulk_create(
+                    [
+                        PersonOrganization(
+                            org=org,
+                            person_id=pid,
+                            is_active=True,
+                        )
+                        for pid in person_ids
+                    ],
+                    ignore_conflicts=True,
+                )
+
+            return redirect("orgs:org_people", slug=slug)
+
+        # ---- REMOVE PERSON ----
+        if "remove_person" in request.POST:
             link_id = request.POST.get("link_id")
             PersonOrganization.objects.filter(
                 id=link_id,
                 org=org,
             ).delete()
             return redirect("orgs:org_people", slug=slug)
-    else:
-        form = AddPersonToOrgForm(org=org)
 
-    people_links, filter_ctx = apply_filters(request, people_links, PERSON_ORG_FILTERS)
+    # ---- filters + pagination ----
+    people_links, filter_ctx = apply_filters(
+        request,
+        people_links,
+        PERSON_ORG_FILTERS,
+    )
+
     pagination = paginate(request, people_links, per_page=20)
 
     return render(
@@ -318,7 +333,6 @@ def org_people(request, slug):
         {
             "org": org,
             "people_links": pagination["page_obj"],
-            "form": form,
             **pagination,
             **filter_ctx,
         },

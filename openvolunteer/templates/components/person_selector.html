@@ -1,0 +1,185 @@
+{% comment %}
+Reusable person selector component
+
+Context variables:
+- selected_people: list of {id, name} dicts OR Person objects (required)
+- input_name: name for submitted inputs (default: "people")
+- org_id: optional org UUID to scope search
+- placeholder: optional input placeholder text
+{% endcomment %}
+{% with input_name=input_name|default:"people" %}
+  <div class="person-selector">
+    <!-- Search input -->
+    <input type="text"
+           class="form-control mb-2 person-search-input"
+           placeholder="{{ placeholder|default:'Search people by name, email, phone…' }}"
+           autocomplete="off" />
+    <!-- Search results -->
+    <div class="list-group mb-3 person-search-results"></div>
+    <!-- Selected people -->
+    <div class="person-selected">
+      <strong>Selected</strong>
+      <div class="mt-2 person-selected-list"></div>
+    </div>
+  </div>
+  <script>
+    (function() {
+      const container = document.currentScript.previousElementSibling;
+      const searchInput = container.querySelector(".person-search-input");
+      const resultsEl = container.querySelector(".person-search-results");
+      const selectedEl = container.querySelector(".person-selected-list");
+
+      const selected = new Map();
+
+      // ---- preload selected people ----
+      {
+        %
+        for p in selected_people %
+      }
+      selected.set("{{ p.id }}", {
+        id: "{{ p.id }}",
+        name: "{{ p.full_name|escapejs }}",
+        tags: [{
+          %
+          for t in p.taggings.all %
+        } {
+          name: "{{ t.tag.name|escapejs }}",
+          color: "{{ t.tag.color_hex }}",
+        }, {
+          %
+          endfor %
+        }],
+      });
+      {
+        %
+        endfor %
+      }
+
+      function renderSelected() {
+        selectedEl.innerHTML = "";
+        for (const person of selected.values()) {
+          const row = document.createElement("div");
+          row.className = "d-flex align-items-center mb-1";
+
+          row.innerHTML = `
+        <input type="hidden" name="{{ input_name }}" value="${person.id}" />
+        <div class="flex-grow-1">
+          <div>${person.name}</div>
+          ${
+            person.tags && person.tags.length
+              ? `<div class="mt-1">
+                  ${person.tags
+                    .map(
+                      t =>
+                        `<span class="tag-pill me-1" style="--tag-color: ${t.color};">
+                           ${t.name}
+                         </span>`
+                    )
+                    .join("")}
+                </div>`
+              : ""
+          }
+        </div>
+
+        <button type="button" class="btn btn-sm btn-link text-danger" aria-label="Remove">
+          ✕
+        </button>
+      `;
+
+          row.querySelector("button").onclick = () => {
+            selected.delete(person.id);
+            renderSelected();
+          };
+
+          selectedEl.appendChild(row);
+        }
+      }
+
+      renderSelected();
+
+      let abortController;
+
+      searchInput.addEventListener("input", async () => {
+        const q = searchInput.value.trim();
+        resultsEl.innerHTML = "";
+
+        if (q.length < 2) return;
+
+        if (abortController) abortController.abort();
+        abortController = new AbortController();
+
+        const params = new URLSearchParams({
+          q
+        });
+        {
+          %
+          if org_id %
+        }
+        params.append("org_id", "{{ org_id }}");
+        {
+          %
+          endif %
+        }
+
+        {
+          %
+          if exclude_org_id %
+        }
+        params.append("exclude_org_id", "{{ exclude_org_id }}");
+        {
+          %
+          endif %
+        }
+
+        let resp;
+        try {
+          resp = await fetch(
+            "{% url 'people:person_search' %}?" + params.toString(), {
+              signal: abortController.signal
+            }
+          );
+        } catch (e) {
+          return;
+        }
+
+        if (!resp.ok) return;
+
+        const data = await resp.json();
+
+        for (const person of data.results) {
+          if (selected.has(person.id)) continue;
+
+          const btn = document.createElement("button");
+          btn.type = "button";
+          btn.className = "list-group-item list-group-item-action";
+          btn.innerHTML = `
+        <div class="fw-semibold">${person.name}</div>
+        ${
+          person.tags && person.tags.length
+            ? `<div class="mt-1">
+                ${person.tags
+                  .map(
+                    t =>
+                      `<span class="tag-pill me-1" style="--tag-color: ${t.color};">
+                         ${t.name}
+                       </span>`
+                  )
+                  .join("")}
+              </div>`
+            : ""
+        }
+      `;
+
+          btn.onclick = () => {
+            selected.set(person.id, person);
+            renderSelected();
+            resultsEl.innerHTML = "";
+            searchInput.value = "";
+          };
+
+          resultsEl.appendChild(btn);
+        }
+      });
+    })();
+  </script>
+{% endwith %}
