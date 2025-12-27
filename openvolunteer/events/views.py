@@ -277,8 +277,17 @@ def shift_assign_people(request, shift_id):
     if not user_can_assign_people(request.user, shift.event):
         raise Http404
 
+    # ---- Currently assigned people (for preload + diff) ----
+    assigned_people = (
+        Person.objects.filter(
+            shift_assignments__shift=shift,
+        )
+        .prefetch_related("taggings__tag")
+        .distinct()
+    )
+
     assigned_ids = set(
-        shift.assignments.values_list("person_id", flat=True),
+        assigned_people.values_list("id", flat=True),
     )
 
     if request.method == "POST":
@@ -289,38 +298,35 @@ def shift_assign_people(request, shift_id):
         to_add = submitted_ids - assigned_ids
         to_remove = assigned_ids - submitted_ids
 
-        ShiftAssignment.objects.filter(
-            shift=shift,
-            person_id__in=to_remove,
-        ).delete()
+        # ---- Remove assignments ----
+        if to_remove:
+            ShiftAssignment.objects.filter(
+                shift=shift,
+                person_id__in=to_remove,
+            ).delete()
 
-        ShiftAssignment.objects.bulk_create(
-            [
-                ShiftAssignment(
-                    shift=shift,
-                    person_id=pid,
-                    assigned_by=request.user,
-                )
-                for pid in to_add
-            ],
-            update_conflicts=True,
-            unique_fields=["shift", "person"],
-            update_fields=["assigned_by"],
-        )
+        # ---- Add assignments ----
+        if to_add:
+            ShiftAssignment.objects.bulk_create(
+                [
+                    ShiftAssignment(
+                        shift=shift,
+                        person_id=pid,
+                        assigned_by=request.user,
+                    )
+                    for pid in to_add
+                ],
+                ignore_conflicts=True,
+            )
 
         return redirect("events:event_detail", shift.event.id)
-
-    # only used to preload selected names
-    people = Person.objects.filter(
-        id__in=assigned_ids,
-    )
 
     return render(
         request,
         "events/shift_assign.html",
         {
             "shift": shift,
-            "people": people,
-            "assigned_ids": assigned_ids,
+            # this is what the selector consumes
+            "assigned_people": assigned_people,
         },
     )

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.core.exceptions import BadRequest
 from django.core.exceptions import PermissionDenied
 from django.db.models import Q
 from django.http import Http404
@@ -197,6 +198,10 @@ def person_search(request):
     q = request.GET.get("q", "").strip()
     org_id = request.GET.get("org_id")
     exclude_org_id = request.GET.get("exclude_org_id")
+
+    if exclude_org_id == org_id:
+        msg = f"Exclude and include org IDs match: {org_id}"
+        raise BadRequest(msg)
 
     if len(q) < MIN_SEARCH_QUERY_LEN:
         return JsonResponse({"results": []})

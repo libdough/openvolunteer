@@ -152,4 +152,4 @@ class ShiftAssignment(models.Model):
         ]
 
     def __str__(self):
-        return f"{self.person.full_name} → {self.shift}"
+        return f"{self.person.full_name} <-> {self.shift}"

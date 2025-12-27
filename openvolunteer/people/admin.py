@@ -107,7 +107,7 @@ class PersonOrganizationInline(admin.TabularInline):
     model = PersonOrganization
     extra = 0
     autocomplete_fields = ["org"]
-    fields = ("org", "role", "is_active")
+    fields = ("org", "is_active")
     show_change_link = True
     verbose_name = "Org Membership"
     verbose_name_plural = "Org Memberships"

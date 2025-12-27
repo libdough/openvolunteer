@@ -15,7 +15,7 @@
     <div class="card shadow-sm">
       <div class="card-header">Select people</div>
       <div class="card-body">
-        {% with selected_people=people org_id=shift.event.org.id %}
+        {% with selected_people=assigned_people org_id=shift.event.org.id %}
           {% include "components/person_selector.html" %}
         {% endwith %}
       </div>
