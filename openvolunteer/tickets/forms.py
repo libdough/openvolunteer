@@ -25,7 +25,11 @@ class TicketUpdateForm(forms.ModelForm):
                 "Open tickets cannot be assigned.",
             )
 
-        if status != TicketStatus.OPEN and not assigned_to:
+        if (
+            status
+            not in [TicketStatus.OPEN, TicketStatus.COMPLETED, TicketStatus.CANCELED]
+            and not assigned_to
+        ):
             self.add_error(
                 "assigned_to",
                 "Assigned user is required unless ticket is open.",

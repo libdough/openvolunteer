@@ -20,6 +20,8 @@ from openvolunteer.events.models import EventStatus
 from openvolunteer.events.models import Shift
 from openvolunteer.events.permissions import user_can_manage_events
 from openvolunteer.people.models import PersonOrganization
+from openvolunteer.tickets.models import Ticket
+from openvolunteer.tickets.models import TicketStatus
 from openvolunteer.users.models import User
 
 from .filters import MEMBERSHIP_FILTERS
@@ -87,6 +89,18 @@ def org_detail(request, slug):
                 filter=Q(events__event_status=EventStatus.SCHEDULED),
                 distinct=True,
             ),
+            ticket_count=Count(
+                "tickets",
+                filter=Q(
+                    tickets__status__in=[
+                        TicketStatus.OPEN,
+                        TicketStatus.TODO,
+                        TicketStatus.INPROGRESS,
+                        TicketStatus.BLOCKED,
+                    ],
+                ),
+                distinct=True,
+            ),
         )
         .filter(slug=slug)
         .first()
@@ -110,6 +124,24 @@ def org_detail(request, slug):
         .prefetch_related("person__taggings__tag")
         .order_by("person__full_name")[:5]
     )
+
+    tickets = Ticket.objects.filter(org=org).select_related("assigned_to", "reporter")
+
+    if not user_can_manage_events(request.user, org=org):
+        tickets = tickets.exclude(
+            status__in=[
+                TicketStatus.CANCELED,
+                TicketStatus.COMPLETED,
+            ],
+        )
+    # Open tickets always on top
+    tickets = tickets.annotate(
+        finished_sort=Case(
+            When(status=TicketStatus.OPEN, then=Value(0)),
+            default=Value(1),
+            output_field=IntegerField(),
+        ),
+    ).order_by("finished_sort", "priority", "-created_at")[:5]
 
     events = Event.objects.filter(org=org)
 
@@ -138,6 +170,7 @@ def org_detail(request, slug):
             "events": events,
             "memberships": memberships,
             "people": people,
+            "tickets": tickets,
             "can_edit_org": user_can_edit_org(request.user, org),
             "can_manage_members": user_can_manage_members(request.user, org),
             "can_manage_people": user_can_manage_people(request.user, org),

@@ -110,6 +110,6 @@ def update_ticket(request, ticket_id):
         form.save()
         messages.success(request, "Ticket updated.")
     else:
-        messages.error(request, "Please correct the errors below.")
+        messages.error(request, f"Please correct the errors: {form.errors}")
 
     return redirect("tickets:ticket_detail", ticket_id=ticket.id)

@@ -173,3 +173,7 @@ class Ticket(models.Model):
             self.completed_at = None
 
         super().save(*args, **kwargs)
+
+    @property
+    def is_closed(self):
+        return self.status in {TicketStatus.COMPLETED, TicketStatus.CANCELED}
