@@ -71,17 +71,24 @@
       {# ========================================================= #}
       {# EVENT-LEVEL ASSIGNMENTS (DEFAULT / HIDDEN SHIFT)          #}
       {# ========================================================= #}
-      {% if can_assign_people and not shifts %}
-        <div class="card shadow-sm mb-4">
-          <div class="card-header d-flex justify-content-between align-items-center">
-            <span>Assigned</span>
-            <span class="badge bg-secondary">{{ assigned_people|length }}</span>
+      {% if not shifts %}
+        {% with shift=event.default_shift %}
+          <div class="card shadow-sm mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+              <span>Assignments</span>
+              <span class="badge bg-secondary">{{ shift.assigned_count }}</span>
+            </div>
+            <div class="card-body">
+              {% include "components/assignment_status_table.html" with shift=shift %}
+              {% if can_assign_people %}
+                <div class="text-end mt-3">
+                  <a href="{% url 'events:shift_assign_people' shift.id %}"
+                     class="btn btn-sm btn-outline-primary">Assign people</a>
+                </div>
+              {% endif %}
+            </div>
           </div>
-          <div class="card-body d-flex justify-content-end">
-            <a href="{% url 'events:shift_assign_people' event.default_shift.id %}"
-               class="btn btn-sm btn-outline-primary">Assign people</a>
-          </div>
-        </div>
+        {% endwith %}
       {% endif %}
       {# ========================================================= #}
       {# SHIFTS                                                   #}
@@ -96,21 +103,26 @@
             <ul class="list-group list-group-flush">
               {% for shift in shifts %}
                 <li class="list-group-item">
-                  <strong>{{ shift.name|default:"Shift" }}</strong>
-                  <div class="text-muted small">
-                    {% with start=shift.starts_at end=shift.ends_at %}
-                      {% include "components/datetime_range.html" %}
-                    {% endwith %}
+                  <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                      <strong>{{ shift.name|default:"Shift" }}</strong>
+                      <div class="text-muted small">
+                        {% with start=shift.starts_at end=shift.ends_at %}
+                          {% include "components/datetime_range.html" %}
+                        {% endwith %}
+                      </div>
+                    </div>
+                    <span class="badge bg-secondary">
+                      {{ shift.assigned_count }} /
+                      {% include "components/capacity.html" with capacity=shift.capacity %}
+                    </span>
                   </div>
-                  <div class="small mt-1">
-                    <strong>{{ shift.assigned_count }}</strong>
-                    assigned out of
-                    <strong>{% include "components/capacity.html" with capacity=shift.capacity %}</strong>
-                    capacity
-                  </div>
+                  <div class="mt-2">{% include "components/assignment_status_table.html" with shift=shift %}</div>
                   {% if can_assign_people %}
-                    <a href="{% url 'events:shift_assign_people' shift.id %}"
-                       class="btn btn-sm btn-outline-primary mt-2">Assign people</a>
+                    <div class="mt-3">
+                      <a href="{% url 'events:shift_assign_people' shift.id %}"
+                         class="btn btn-sm btn-outline-primary">Assign people</a>
+                    </div>
                   {% endif %}
                 </li>
               {% endfor %}

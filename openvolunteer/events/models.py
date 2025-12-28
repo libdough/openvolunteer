@@ -4,6 +4,8 @@ import uuid
 
 from django.conf import settings
 from django.db import models
+from django.db.models import Count
+from django.db.models import Q
 
 from openvolunteer.orgs.models import Organization
 
@@ -94,7 +96,7 @@ class Event(models.Model):
     def __str__(self):
         return self.title
 
-    def default_shift(self):
+    def default_shift(self, annotate=True):  # noqa: FBT002
         shift, _ = self.shifts.get_or_create(
             is_default=True,
             defaults={
@@ -105,7 +107,9 @@ class Event(models.Model):
                 "is_hidden": True,
             },
         )
-        return shift
+        if not annotate:
+            return shift
+        return self.shifts.with_assignment_breakdown().get(id=shift.id)
 
     @property
     def display_type(self):
@@ -126,6 +130,32 @@ class Event(models.Model):
         return self.ticket_batches.count()
 
 
+class ShiftQuerySet(models.QuerySet):
+    def with_assignment_breakdown(self):
+        return self.annotate(
+            assignments_init=Count(
+                "assignments",
+                filter=Q(assignments__status=ShiftAssignmentStatus.INIT),
+            ),
+            assignments_pending=Count(
+                "assignments",
+                filter=Q(assignments__status=ShiftAssignmentStatus.PENDING),
+            ),
+            assignments_declined=Count(
+                "assignments",
+                filter=Q(assignments__status=ShiftAssignmentStatus.DECLINED),
+            ),
+            assignments_partial=Count(
+                "assignments",
+                filter=Q(assignments__status=ShiftAssignmentStatus.PARTIAL),
+            ),
+            assignments_confirmed=Count(
+                "assignments",
+                filter=Q(assignments__status=ShiftAssignmentStatus.CONFIRMED),
+            ),
+        )
+
+
 class Shift(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     event = models.ForeignKey(Event, on_delete=models.CASCADE, related_name="shifts")
@@ -140,6 +170,8 @@ class Shift(models.Model):
     is_default = models.BooleanField(default=False)
     is_hidden = models.BooleanField(default=False)
 
+    objects = ShiftQuerySet.as_manager()
+
     class Meta:
         indexes = [
             models.Index(fields=["event", "is_default"]),
@@ -153,6 +185,22 @@ class Shift(models.Model):
     @property
     def assigned_count(self):
         return self.assignments.count()
+
+    @property
+    def status_counts(self):
+        """
+        Requires `with_assignment_breakdown()` to have been applied.
+        Safe fallback to 0 for unannotated shifts.
+        """
+
+        class Counts:
+            init = getattr(self, "assignments_init", 0)
+            pending = getattr(self, "assignments_pending", 0)
+            declined = getattr(self, "assignments_declined", 0)
+            partial = getattr(self, "assignments_partial", 0)
+            confirmed = getattr(self, "assignments_confirmed", 0)
+
+        return Counts()
 
     @property
     def has_capacity(self):

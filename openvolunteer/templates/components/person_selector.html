@@ -1,100 +1,161 @@
 <!-- djlint:off -->
-{% comment %}
-Reusable person selector component
-
-Required context:
-- selected_people: iterable of Person objects (required)
-
-Optional context:
-- input_name: name for submitted inputs (default: "people")
-- org_id: optional org UUID to scope search
-- exclude_org_id: optional org UUID to exclude members
-- placeholder: optional input placeholder text
-{% endcomment %}
 {% with input_name=input_name|default:"people" %}
-<div class="person-selector">
-  <!-- Search input -->
-  <input
-    type="text"
-    class="form-control mb-2 person-search-input"
-    placeholder="{{ placeholder|default:'Search people by name, email, phone…' }}"
-    autocomplete="off"
-  />
+<div class="person-selector border rounded p-3">
+  <!-- Bulk add (optional / advanced) -->
+  <div class="mb-3">
+    <button type="button"
+            class="btn btn-sm btn-outline-secondary bulk-toggle">
+      <span class="me-1">➕</span> Bulk add
+    </button>
+  </div>
 
-  <!-- Search results -->
-  <div class="list-group mb-3 person-search-results"></div>
+  <div class="bulk-panel d-none mb-4 p-3 bg-light border rounded">
+
+    <div class="mb-2 fw-semibold text-muted small">
+      Add people by criteria
+    </div>
+
+    {% if bulk_tags %}
+      <div class="mb-3">
+        <label class="form-label small">Tags</label>
+
+        <input type="text"
+               class="form-control form-control-sm mb-2 bulk-tags-filter"
+               placeholder="Filter tags…"
+               autocomplete="off">
+
+        <div class="form-text">
+          Type to filter, Ctrl/Cmd+Click to select multiple
+        </div>
+
+        <select class="form-select bulk-tags" multiple size="6">
+          {% for tag in bulk_tags %}
+            <option value="{{ tag.id }}">
+              {{ tag.name }}{% if tag.org %} ({{ tag.org.name }}){% endif %}
+            </option>
+          {% endfor %}
+        </select>
+
+        <div class="form-text">
+          Matches any selected tag
+        </div>
+      </div>
+    {% endif %}
+
+
+    {% if bulk_events %}
+      <div class="mb-3">
+        <label class="form-label small">Previous participation</label>
+        <select class="form-select bulk-event">
+          <option value="">— Select an event —</option>
+          {% for event in bulk_events %}
+            <option value="{{ event.id }}">{{ event.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    {% endif %}
+
+    {% if bulk_tags or bulk_events %}
+      <button type="button"
+              class="btn btn-sm btn-primary bulk-add">
+        Add matching people
+      </button>
+    {% else %}
+      <div class="text-muted small fst-italic">
+        No bulk options available.
+      </div>
+    {% endif %}
+  </div>
+
+  <!-- Search -->
+  <div class="mb-3">
+    <label class="form-label small fw-semibold">Search people</label>
+    <input
+      type="text"
+      class="form-control person-search-input"
+      placeholder="{{ placeholder|default:'Search by name, email, phone…' }}"
+      autocomplete="off"
+    />
+  </div>
+
+  <div class="list-group mb-4 person-search-results"></div>
 
   <!-- Selected people -->
   <div class="person-selected">
-    <strong>Selected</strong>
-    <div class="mt-2 person-selected-list"></div>
+    <div class="fw-semibold mb-2">
+      Selected people
+      <span class="text-muted small">
+        (<span class="person-selected-count">0</span>)
+      </span>
+    </div>
+
+    <div class="person-selected-list"></div>
+
+    <div class="text-muted small fst-italic empty-selected d-none">
+      No people selected yet.
+    </div>
   </div>
 
   <script>
     (function () {
       const container = document.currentScript.closest(".person-selector");
-      if (!container) {
-        console.error("person_selector: container not found");
-        return;
-      }
+      if (!container) return;
 
       const searchInput = container.querySelector(".person-search-input");
       const resultsEl = container.querySelector(".person-search-results");
       const selectedEl = container.querySelector(".person-selected-list");
+      const emptyEl = container.querySelector(".empty-selected");
+      const countEl = container.querySelector(".person-selected-count");
 
       const selected = new Map();
 
-      // ---- preload selected people (server-rendered) ----
-      {# djlint:off #}
       {% for p in selected_people %}
       selected.set("{{ p.id }}", {
         id: "{{ p.id }}",
         name: "{{ p.full_name|escapejs }}",
         tags: [
-          {# djlint:off #}
           {% for t in p.taggings.all %}
           {
             name: "{{ t.tag.name|escapejs }}",
             color: "{{ t.tag.color_hex }}",
           },
-          {# djlint:off #}
           {% endfor %}
         ],
       });
-      {# djlint:off #}
       {% endfor %}
 
       function renderSelected() {
         selectedEl.innerHTML = "";
+        countEl.textContent = selected.size;
+        emptyEl.classList.toggle("d-none", selected.size > 0);
 
         for (const person of selected.values()) {
           const row = document.createElement("div");
-          row.className = "d-flex align-items-center mb-1";
+          row.className =
+            "d-flex align-items-start gap-2 p-2 border rounded mb-2 bg-white";
 
           row.innerHTML = `
             <input type="hidden" name="{{ input_name }}" value="${person.id}" />
 
             <div class="flex-grow-1">
-              <div>${person.name}</div>
+              <div class="fw-semibold">${person.name}</div>
               ${
-                person.tags && person.tags.length
+                person.tags?.length
                   ? `<div class="mt-1">
-                      ${person.tags
-                        .map(
-                          t =>
-                            `<span class="tag-pill me-1"
-                                   style="--tag-color: ${t.color};">
-                               ${t.name}
-                             </span>`
-                        )
-                        .join("")}
+                      ${person.tags.map(
+                        t =>
+                          `<span class="tag-pill me-1"
+                                 style="--tag-color:${t.color}">
+                             ${t.name}
+                           </span>`
+                      ).join("")}
                     </div>`
                   : ""
               }
             </div>
 
             <button type="button"
-                    class="btn btn-sm btn-link text-danger"
+                    class="btn btn-sm btn-outline-danger"
                     aria-label="Remove">
               ✕
             </button>
@@ -124,24 +185,13 @@ Optional context:
 
         const params = new URLSearchParams({ q });
 
-        {% if org_id %}
-        params.append("org_id", "{{ org_id }}");
-        {% endif %}
+        {% if org_id %} params.append("org_id", "{{ org_id }}"); {% endif %}
+        {% if exclude_org_id %} params.append("exclude_org_id", "{{ exclude_org_id }}"); {% endif %}
 
-        {% if exclude_org_id %}
-        params.append("exclude_org_id", "{{ exclude_org_id }}");
-        {% endif %}
-
-        let resp;
-        try {
-          resp = await fetch(
-            "{% url 'people:person_search' %}?" + params.toString(),
-            { signal: abortController.signal }
-          );
-        } catch (e) {
-          return;
-        }
-
+        const resp = await fetch(
+          "{% url 'people:person_search' %}?" + params.toString(),
+          { signal: abortController.signal }
+        );
         if (!resp.ok) return;
 
         const data = await resp.json();
@@ -156,17 +206,15 @@ Optional context:
           btn.innerHTML = `
             <div class="fw-semibold">${person.name}</div>
             ${
-              person.tags && person.tags.length
+              person.tags?.length
                 ? `<div class="mt-1">
-                    ${person.tags
-                      .map(
-                        t =>
-                          `<span class="tag-pill me-1"
-                                 style="--tag-color: ${t.color};">
-                             ${t.name}
-                           </span>`
-                      )
-                      .join("")}
+                    ${person.tags.map(
+                      t =>
+                        `<span class="tag-pill me-1"
+                               style="--tag-color:${t.color}">
+                           ${t.name}
+                         </span>`
+                    ).join("")}
                   </div>`
                 : ""
             }
@@ -181,6 +229,49 @@ Optional context:
 
           resultsEl.appendChild(btn);
         }
+      });
+
+      const bulkToggle = container.querySelector(".bulk-toggle");
+      const bulkPanel = container.querySelector(".bulk-panel");
+      bulkToggle?.addEventListener("click", () =>
+        bulkPanel.classList.toggle("d-none")
+      );
+      const tagFilterInput = container.querySelector(".bulk-tags-filter");
+      const tagSelect = container.querySelector(".bulk-tags");
+
+      if (tagFilterInput && tagSelect) {
+        const options = Array.from(tagSelect.options);
+
+        tagFilterInput.addEventListener("input", () => {
+          const q = tagFilterInput.value.trim().toLowerCase();
+
+          options.forEach(option => {
+            option.hidden = q && !option.text.toLowerCase().includes(q);
+          });
+        });
+      }
+
+      const bulkAddBtn = container.querySelector(".bulk-add");
+      bulkAddBtn?.addEventListener("click", async () => {
+        const tagIds = Array.from(
+          container.querySelector(".bulk-tags")?.selectedOptions || []
+        ).map(o => o.value);
+
+        const eventId = container.querySelector(".bulk-event")?.value;
+
+        const params = new URLSearchParams();
+        if (tagIds.length) params.set("tag_ids", tagIds.join(","));
+        if (eventId) params.set("participated_event_id", eventId);
+        {% if org_id %} params.set("org_id", "{{ org_id }}"); {% endif %}
+
+        const resp = await fetch(
+          "{% url 'people:person_search' %}?" + params.toString()
+        );
+        if (!resp.ok) return;
+
+        const data = await resp.json();
+        data.results.forEach(p => selected.set(p.id, p));
+        renderSelected();
       });
     })();
   </script>

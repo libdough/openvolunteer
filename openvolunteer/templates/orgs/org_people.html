@@ -1,5 +1,7 @@
 {% extends "base.html" %}
 
+{% load person_selector %}
+
 {% block title %}
   People · {{ org.name }}
 {% endblock title %}
@@ -18,7 +20,7 @@
           <form method="post">
             {% csrf_token %}
             {% with exclude_org_id=org.id input_name="people" placeholder="Search people to add…" %}
-              {% include "components/person_selector.html" %}
+              {% person_selector %}
             {% endwith %}
             <button type="submit" name="add_people" class="btn btn-primary btn-sm mt-3">➕ Add selected</button>
           </form>

@@ -1,5 +1,7 @@
 {% extends "base.html" %}
 
+{% load person_selector %}
+
 {% block title %}
   Assign People
 {% endblock title %}
@@ -16,7 +18,7 @@
       <div class="card-header">Select people</div>
       <div class="card-body">
         {% with selected_people=assigned_people org_id=shift.event.org.id %}
-          {% include "components/person_selector.html" %}
+          {% person_selector %}
         {% endwith %}
       </div>
       <div class="card-footer text-end">

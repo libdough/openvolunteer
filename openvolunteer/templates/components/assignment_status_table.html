@@ -1,0 +1,39 @@
+<table class="table table-sm table-borderless mb-0 small">
+  <tbody>
+    {% if shift.status_counts.confirmed %}
+      <tr>
+        <th class="fw-normal text-success">Confirmed</th>
+        <td class="text-end fw-semibold">{{ shift.status_counts.confirmed }}</td>
+      </tr>
+    {% endif %}
+    {% if shift.status_counts.partial %}
+      <tr>
+        <th class="fw-normal text-info">Partial</th>
+        <td class="text-end fw-semibold">{{ shift.status_counts.partial }}</td>
+      </tr>
+    {% endif %}
+    {% if shift.status_counts.pending %}
+      <tr>
+        <th class="fw-normal text-warning">Pending</th>
+        <td class="text-end fw-semibold">{{ shift.status_counts.pending }}</td>
+      </tr>
+    {% endif %}
+    {% if shift.status_counts.init %}
+      <tr>
+        <th class="fw-normal text-muted">Newly Added</th>
+        <td class="text-end fw-semibold">{{ shift.status_counts.init }}</td>
+      </tr>
+    {% endif %}
+    {% if shift.status_counts.declined %}
+      <tr>
+        <th class="fw-normal text-danger">Declined</th>
+        <td class="text-end fw-semibold">{{ shift.status_counts.declined }}</td>
+      </tr>
+    {% endif %}
+    {% if not shift.assigned_count %}
+      <tr>
+        <td colspan="2" class="text-muted fst-italic">No assignments yet</td>
+      </tr>
+    {% endif %}
+  </tbody>
+</table>

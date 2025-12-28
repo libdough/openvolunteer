@@ -17,6 +17,7 @@ from openvolunteer.events.models import EventStatus
 from openvolunteer.orgs.models import Membership
 from openvolunteer.orgs.models import Organization
 from openvolunteer.orgs.permissions import user_can_manage_people
+from openvolunteer.orgs.queryset import orgs_for_user
 
 from .filters import PERSON_FILTERS
 from .forms import PersonCSVUploadForm
@@ -35,14 +36,8 @@ def person_list(request):
 
     # Non-admin users only see people in their orgs
     if not (request.user.is_staff or request.user.is_superuser):
-        org_ids = Membership.objects.filter(
-            user=request.user,
-            is_active=True,
-        ).values_list("org_id", flat=True)
-
         people = people.filter(
-            org_links__org_id__in=org_ids,
-            org_links__is_active=True,
+            org__in=orgs_for_user(request.user),
         )
 
     people = people.distinct().order_by("full_name")
@@ -188,98 +183,98 @@ def person_upload_csv(request):
 
 
 MIN_SEARCH_QUERY_LEN = 2
-MAX_RESULTS = 10
+MAX_RESULTS = 100
 
 
 @login_required
-def person_search(request):
-    """
-    Search people by name / email / phone / discord / tags.
-    Intended for org-admin / staff use.
-    """
+def person_search(request):  # noqa: C901
     user = request.user
 
     # ---- Permission gate ----
     if not (user.is_staff or user.is_superuser):
-        if not Membership.objects.filter(
-            user=user,
-            is_active=True,
-        ).exists():
+        if not Membership.objects.filter(user=user, is_active=True).exists():
             msg = "You do not have permission to search people."
             raise PermissionDenied(msg)
 
     q = request.GET.get("q", "").strip()
     org_id = request.GET.get("org_id")
     exclude_org_id = request.GET.get("exclude_org_id")
+    tag_ids = request.GET.get("tag_ids")
+    participated_event_id = request.GET.get("participated_event_id")
 
-    if exclude_org_id == org_id:
-        msg = f"Exclude and include org IDs match: {org_id}"
+    if exclude_org_id and exclude_org_id == org_id:
+        msg = "Exclude and include org IDs match"
         raise BadRequest(msg)
-
-    if len(q) < MIN_SEARCH_QUERY_LEN:
-        return JsonResponse({"results": []})
 
     people = Person.objects.all()
 
     # ---- Visibility scoping ----
     if not (user.is_staff or user.is_superuser):
-        org_ids = Membership.objects.filter(
-            user=user,
-            role__in=["owner", "admin", "organizer"],
-            is_active=True,
-        ).values_list("org_id", flat=True)
-
         people = people.filter(
-            org_links__org_id__in=org_ids,
-            org_links__is_active=True,
+            org__in=orgs_for_user(request.user),
         )
 
-    # ---- Optional include org scope ----
+    # ---- Org include / exclude ----
     if org_id:
         people = people.filter(
             org_links__org_id=org_id,
             org_links__is_active=True,
         )
 
-    # ---- Optional exclude org scope ----
     if exclude_org_id:
         people = people.exclude(
             org_links__org_id=exclude_org_id,
             org_links__is_active=True,
         )
 
-    people = (
-        people.filter(
+    # ---- Tag filter (ANY of these tags) ----
+    if tag_ids:
+        tag_ids = [tid for tid in tag_ids.split(",") if tid]
+        people = people.filter(taggings__tag_id__in=tag_ids)
+
+    # ---- Event participation ----
+    if participated_event_id:
+        people = people.filter(
+            assignments__shift__event_id=participated_event_id,
+        )
+
+    # ---- Free text search ----
+    if q:
+        if len(q) < MIN_SEARCH_QUERY_LEN:
+            return JsonResponse({"results": []})
+
+        people = people.filter(
             Q(full_name__icontains=q)
             | Q(email__icontains=q)
             | Q(phone__icontains=q)
             | Q(discord__icontains=q)
             | Q(taggings__tag__name__icontains=q),
         )
-        .distinct()
-        .order_by("full_name")[:MAX_RESULTS]
-    )
 
-    people = people.prefetch_related("taggings__tag")
+    people = (
+        people.distinct()
+        .order_by("full_name")
+        .prefetch_related("taggings__tag")[:MAX_RESULTS]
+    )
 
     return JsonResponse(
         {
             "results": [
                 {
-                    "id": str(person.id),
-                    "name": person.full_name,
-                    "email": person.email if user.is_staff else None,
-                    "phone": person.phone if user.is_staff else None,
-                    "discord": person.discord,
+                    "id": str(p.id),
+                    "name": p.full_name,
+                    "email": p.email if user.is_staff else None,
+                    "phone": p.phone if user.is_staff else None,
+                    "discord": p.discord,
                     "tags": [
                         {
                             "name": t.tag.name,
                             "color": t.tag.color_hex,
                         }
-                        for t in person.taggings.all()
+                        for t in p.taggings.all()
                     ],
                 }
-                for person in people
+                for p in people
             ],
         },
     )

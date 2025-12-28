@@ -96,7 +96,11 @@ def event_detail(request, event_id):
     ).distinct()
 
     # Paginate visible shifts (excluding hidden default shift if desired)
-    shifts_qs = event.shifts.exclude(id=default_shift.id).order_by("starts_at")
+    shifts_qs = (
+        event.shifts.exclude(id=default_shift.id)
+        .with_assignment_breakdown()
+        .order_by("starts_at")
+    )
 
     pagination = paginate(request, shifts_qs, per_page=10)
 
@@ -179,11 +183,7 @@ def event_edit(request, event_id):
 
     default_shift = event.default_shift()
 
-    shift_qs = (
-        event.shifts.exclude(is_default=True)
-        .exclude(is_hidden=True)
-        .order_by("starts_at")
-    )
+    shifts_qs = event.shifts.exclude(is_hidden=True).order_by("starts_at")
 
     org_qs = Organization.objects.filter(
         memberships__user=request.user,
@@ -194,7 +194,7 @@ def event_edit(request, event_id):
     if request.method == "POST":
         shift_formset = ShiftFormSet(
             request.POST,
-            queryset=shift_qs,
+            queryset=shifts_qs,
         )
         form = EventForm(request.POST, instance=event)
         if not can_edit_owner:
@@ -221,7 +221,7 @@ def event_edit(request, event_id):
 
             return redirect("events:event_detail", event.id)
     else:
-        shift_formset = ShiftFormSet(queryset=shift_qs)
+        shift_formset = ShiftFormSet(queryset=shifts_qs)
         form = EventForm(instance=event)
         form.fields["org"].queryset = org_qs
         form.fields["owned_by"].queryset = User.objects.filter(
@@ -328,5 +328,6 @@ def shift_assign_people(request, shift_id):
             "shift": shift,
             # this is what the selector consumes
             "assigned_people": assigned_people,
+            "org_id": shift.event.org_id,
         },
     )
