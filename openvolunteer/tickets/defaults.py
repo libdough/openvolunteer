@@ -1,6 +1,7 @@
 from openvolunteer.events.models import EventTemplate
 from openvolunteer.events.models import ShiftAssignmentStatus
 
+from .actions.enum import TicketActionRunWhen
 from .actions.models import TicketActionButtonColor
 from .actions.models import TicketActionTemplate
 from .actions.models import TicketActionType
@@ -12,6 +13,22 @@ def install_default_ticket_actions():
     """
     Install global TicketActionTemplates.
     """
+    initialize_assignment, _ = TicketActionTemplate.objects.get_or_create(
+        slug="initialize_assignment",
+        action_type=TicketActionType.UPDATE_SHIFT_STATUS,
+        label="Initialize Assignment",
+        defaults={
+            "run_when": TicketActionRunWhen.ON_CREATE,
+            "description": (
+                "Can be run on ticket creation to change the "
+                "status of a new assignment from init to pending"
+            ),
+            "button_color": TicketActionButtonColor.SECONDARY,
+            "config": {
+                "status": ShiftAssignmentStatus.PENDING,
+            },
+        },
+    )
 
     create_assignment, _ = TicketActionTemplate.objects.get_or_create(
         slug="create_assignment",
@@ -115,6 +132,7 @@ def install_default_ticket_actions():
     )
 
     return {
+        "initialize_assignment": initialize_assignment,
         "create_assignment": create_assignment,
         "create_assignment_partial": create_assignment_partial,
         "complete_ticket": complete_ticket,
@@ -156,7 +174,7 @@ def install_default_ticket_templates(actions):
                 "5. If they confirm their interest, click the `confirm` action button. "
                 "If they are not interested, click the `reject` action button."
             ),
-            "default_priority": 1,
+            "default_priority": 3,
             "claimable": True,
         },
     )
@@ -183,7 +201,7 @@ def install_default_ticket_templates(actions):
                 "effort to make a difference.\n"
                 "\n"
                 "Would you be interested in volunteering for "
-                "{{event_type}} on {{starts_at_date}}"
+                "{{event.type}} on {{starts_at_date}}"
                 "at {{starts_at_time.cdt}}?\n"
                 "\n"
                 "Please let us know!\n"
@@ -194,13 +212,14 @@ def install_default_ticket_templates(actions):
                 "5. If they confirm their interest, click the `confirm` action button. "
                 "If they are not interested, click the `reject` action button.\n"
             ),
-            "default_priority": 1,
+            "default_priority": 2,
             "claimable": True,
         },
     )
     if created:
         recruit.action_templates.set(
             [
+                actions["initialize_assignment"],
                 actions["create_assignment"],
                 actions["create_assignment_partial"],
                 actions["close_ticket"],
@@ -210,14 +229,14 @@ def install_default_ticket_templates(actions):
     reconfirmation, created = TicketTemplate.objects.get_or_create(
         name="Reconfirmation",
         defaults={
-            "ticket_name_template": "Reconfirm {{person.discord}} for {{event.title}}",
+            "ticket_name_template": "Reconfirm {{person.discord}} for {{event.name}}",
             "description_template": (
                 "Hi {{person.discord}}!\n"
                 "Please reconfirm your availability for "
-                "**{{ event.title }}** on {{ starts_at_date }}.\n"
+                "**{{ event.name }}** on {{ starts_at_date }}.\n"
                 "See You soon!"
             ),
-            "default_priority": 2,
+            "default_priority": 4,
             "claimable": True,
         },
     )
@@ -235,10 +254,10 @@ def install_default_ticket_templates(actions):
             "ticket_name_template": "Distribute phone numbers to {{person.discord}}",
             "description_template": (
                 "Distribute phone bank materials for "
-                "**{{ event.title }}**."
+                "**{{ event.name }}**."
                 "Contact {{event.owned_by}} for more details."
             ),
-            "default_priority": 3,
+            "default_priority": 2,
             "claimable": False,
         },
     )

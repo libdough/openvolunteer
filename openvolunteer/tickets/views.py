@@ -10,6 +10,8 @@ from openvolunteer.core.filters import apply_filters
 from openvolunteer.core.pagination import paginate
 from openvolunteer.orgs.queryset import orgs_for_user
 
+from .actions.enum import TicketActionRunWhen
+from .actions.service import TicketActionService
 from .actions.utils import reset_ticket_actions
 from .audit import log_ticket_event
 from .filters import TICKET_FILTERS
@@ -87,6 +89,16 @@ def claim_ticket(request, ticket_id):
         actor=request.user,
     )
 
+    # Run on claim actions
+    for action in ticket.actions.filter(
+        run_when=TicketActionRunWhen.ON_CLAIM,
+        is_completed=False,
+    ):
+        TicketActionService.execute(
+            action=action,
+            user=request.user,
+        )
+
     messages.success(request, "You have claimed this ticket.")
     return redirect("tickets:ticket_detail", ticket_id=ticket.id)
 
@@ -111,6 +123,16 @@ def unclaim_ticket(request, ticket_id):
         message="Ticket unclaimed",
         actor=request.user,
     )
+
+    # Run on unclaim actions
+    for action in ticket.actions.filter(
+        run_when=TicketActionRunWhen.ON_UNCLAIM,
+        is_completed=False,
+    ):
+        TicketActionService.execute(
+            action=action,
+            user=request.user,
+        )
 
     messages.success(request, "Ticket has been unassigned.")
     return redirect("tickets:ticket_detail", ticket_id=ticket.id)

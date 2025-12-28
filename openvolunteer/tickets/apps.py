@@ -10,6 +10,8 @@ class TicketsConfig(AppConfig):
 
     def ready(self):
         # ruff: noqa: PLC0415
+        # Make sure recievers are registered
+
         from .defaults import install_default_event_templates
         from .defaults import install_default_ticket_actions
         from .defaults import install_default_ticket_templates

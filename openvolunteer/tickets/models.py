@@ -4,8 +4,11 @@ import uuid
 from django.conf import settings
 from django.db import models
 from django.utils import timezone
+from django.utils.functional import cached_property
 
 from openvolunteer.orgs.models import Organization
+
+from .actions.enum import TicketActionRunWhen
 
 
 class TicketStatus(models.TextChoices):
@@ -198,6 +201,15 @@ class Ticket(models.Model):
             self.completed_at = None
 
         super().save(*args, **kwargs)
+
+    @cached_property
+    def manual_actions(self):
+        """
+        User-visible actions that can be manually triggered.
+        """
+        return self.actions.filter(
+            run_when=TicketActionRunWhen.MANUAL,
+        )
 
     @property
     def is_closed(self):

@@ -7,6 +7,7 @@ from .models import Ticket
 from .models import TicketBatch
 from .models import TicketStatus
 from .models import TicketTemplate
+from .services import create_ticket
 
 # --------------------
 # TicketTemplate Admin
@@ -58,8 +59,10 @@ class TicketTemplateAdmin(admin.ModelAdmin):
             {
                 "fields": ("action_templates",),
                 "description": (
-                    "Actions define what the assigned user can do from tickets "
-                    "created from this template."
+                    "Actions are correlated with tickets.\n\n"
+                    "They can either be run manually, "
+                    "or are triggered by some change "
+                    "(e.g. creating the ticket)."
                 ),
             },
         ),
@@ -271,6 +274,25 @@ class TicketAdmin(admin.ModelAdmin):
         "unassign",
     ]
 
+    def save_model(self, request, obj, form, change):
+        """
+        Ensure tickets created via admin go through create_ticket()
+        so actions, audits, and invariants are enforced.
+        """
+        if not change:
+            # Creating a NEW ticket
+            create_ticket(
+                template=obj.template,
+                event=obj.event,
+                person=obj.person,
+                shift=obj.shift,
+                batch=obj.batch,
+                created_by=request.user,
+            )
+        else:
+            # Updating existing ticket → normal save
+            super().save_model(request, obj, form, change)
+
     # ----------------
     # Display helpers
     # ----------------
@@ -330,12 +352,14 @@ class TicketActionTemplateAdmin(admin.ModelAdmin):
         "slug",
         "label",
         "action_type",
+        "run_when",
         "button_color",
         "updates_ticket_status",
         "is_active",
     )
     list_filter = (
         "action_type",
+        "run_when",
         "is_active",
     )
     search_fields = (
@@ -351,6 +375,7 @@ class TicketActionTemplateAdmin(admin.ModelAdmin):
                     "slug",
                     "label",
                     "action_type",
+                    "run_when",
                     "button_color",
                     "description",
                     "is_active",

@@ -5,6 +5,7 @@ from django.template import Context
 from django.template import Template
 
 from openvolunteer.events.models import ShiftAssignment
+from openvolunteer.people.models import Person
 
 from .actions.models import TicketAction
 from .audit import log_ticket_event
@@ -60,6 +61,7 @@ def create_actions_for_ticket(*, ticket, ticket_template):
         TicketAction(
             ticket=ticket,
             template=action_tmpl,
+            run_when=action_tmpl.run_when,
             label=action_tmpl.label,
             action_type=action_tmpl.action_type,
             button_color=action_tmpl.button_color,
@@ -90,20 +92,6 @@ def generate_tickets_for_event(
     - One ticket per (TicketTemplate by Person)
     - Persons are derived from shift assignments unless overridden
     - Tickets are NOT generated for unassigned people
-
-    :param event: Event instance
-    :param created_by: User creating the batch
-    :param ticket_templates: Optional iterable of TicketTemplates
-                             Defaults to event.template.ticket_templates
-    :param person_queryset: Optional queryset of Person
-                             Defaults to assigned people on event shifts
-    :param batch_name: Optional override for batch name
-    :param reason: Optional reason/audit note
-    :param include_default_shift: Whether default shift assignments count
-    """
-
-    """
-    Generate a TicketBatch + Tickets for an Event.
     """
 
     if not event.template:
@@ -115,15 +103,15 @@ def generate_tickets_for_event(
 
     if not ticket_templates.exists():
         msg = "No active TicketTemplates attached to EventTemplate"
-        raise ValueError
+        raise ValueError(msg)
 
     # --------------------
     # Resolve assignments / people
     # --------------------
-
-    assignments_qs = ShiftAssignment.objects.filter(
-        shift__event=event,
-    ).select_related("shift", "person")
+    assignments_qs = ShiftAssignment.objects.filter(shift__event=event).select_related(
+        "shift",
+        "person",
+    )
 
     if not include_default_shift:
         assignments_qs = assignments_qs.exclude(shift__is_default=True)
@@ -137,13 +125,9 @@ def generate_tickets_for_event(
         msg = "No assigned people found for event"
         raise ValueError(msg)
 
-    # Map person_id → assignment
-    assignment_by_person_id = {a.person_id: a for a in assignments}
-
     # --------------------
     # Create batch
     # --------------------
-
     batch = TicketBatch.objects.create(
         org=event.org,
         event=event,
@@ -157,64 +141,89 @@ def generate_tickets_for_event(
     # --------------------
 
     tickets = []
-
     for tmpl in ticket_templates:
-        if tmpl.max_tickets and tmpl.max_tickets < len(assignment_by_person_id):
+        if tmpl.max_tickets and tmpl.max_tickets < len(assignments):
             msg = f"TicketTemplate '{tmpl.name}' max_tickets exceeded"
-            raise ValueError(msg)
-
-        for assignment in assignment_by_person_id.values():
-            person = assignment.person
-
-            shift = assignment.shift if assignment else event.default_shift()
-
-            context = {
-                "event": event,
-                "org": event.org,
-                "starts_at_date": event.starts_at.strftime("%B %d, %Y"),
-                "starts_at_time": format_event_times(event.starts_at),
-                "shift": shift,
-                "assigned_user": None,
-                "person": person,
-                "task_name": tmpl.name,
-                "task_type": event.template.name,
-            }
-
-            name = render_template(tmpl.ticket_name_template, context)
-            description = render_template(
-                tmpl.description_template,
-                context,
+            raise ValueError(
+                msg,
             )
 
-            ticket = Ticket.objects.create(
-                org=event.org,
-                batch=batch,
+        for assignment in assignments:
+            ticket = create_ticket(
+                template=tmpl,
                 event=event,
-                shift=shift,
-                person=person,
-                name=name,
-                description=description,
-                priority=tmpl.default_priority,
-                claimable=tmpl.claimable,
-                reporter=created_by,
-            )
-
-            create_actions_for_ticket(
-                ticket=ticket,
-                ticket_template=tmpl,
-            )
-
-            log_ticket_event(
-                ticket=ticket,
-                event_type=TicketAuditEvent.CREATED,
-                message="Ticket created",
-                actor=created_by,
-                metadata={
-                    "template": tmpl.name,
-                    "batch": str(batch.id),
-                },
+                person=assignment.person,
+                shift=assignment.shift,
+                batch=batch,
+                created_by=created_by,
             )
 
             tickets.append(ticket)
-
     return batch, tickets
+
+
+@transaction.atomic
+def create_ticket(
+    *,
+    template,
+    event,
+    person,
+    created_by,
+    batch=None,
+    shift=None,
+):
+    """
+    Create a Ticket and enforce all invariants:
+    - system on-create action
+    - user actions
+    - audit logging
+    """
+
+    context = {
+        "event": event,
+        "org": event.org,
+        "starts_at": event.starts_at,
+        "assigned_user": None,
+        "person": None,  # lazy load below
+        "task_name": template.name,
+        "task_type": event.template.name,
+    }
+
+    # Lazy-load person only if template needs it
+    person = Person.objects.get(id=person.id)
+    context["person"] = person
+
+    name = render_template(template.ticket_name_template, context)
+    message = render_template(template.description_template, context)
+
+    ticket = Ticket.objects.create(
+        name=name,
+        description=message,
+        org=event.org,
+        event=event,
+        person=person,
+        batch=batch,
+        shift=shift,
+        reporter=created_by,
+        priority=template.default_priority,
+        claimable=template.claimable,
+    )
+
+    # Create user-visible actions
+    create_actions_for_ticket(
+        ticket=ticket,
+        ticket_template=template,
+    )
+
+    log_ticket_event(
+        ticket=ticket,
+        event_type=TicketAuditEvent.CREATED,
+        message="Ticket created",
+        actor=created_by,
+        metadata={
+            "template": template.name,
+            "batch": str(batch.id),
+        },
+    )
+
+    return ticket

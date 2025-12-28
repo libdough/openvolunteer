@@ -11,18 +11,16 @@ from .models import TicketAction
 class TicketActionService:
     @staticmethod
     @transaction.atomic
-    def execute(action: TicketAction, user):
+    def execute(action: TicketAction, user, is_system=True):  # noqa: FBT002
         ticket = action.ticket
 
         # Permission check
-        if ticket.assigned_to != user:
+        if not is_system and user and ticket.assigned_to != user:
             msg = "Only the assigned user may perform this action"
             raise PermissionError(msg)
-
         if action.is_completed:
             msg = "Action already completed"
             raise ValueError(msg)
-
         handler = ACTION_HANDLERS[action.action_type]
         try:
             handler(ticket=ticket, action=action, user=user)
@@ -36,6 +34,7 @@ class TicketActionService:
                 metadata={
                     "action_type": action.action_type,
                     "error": str(exc),
+                    "is_system": is_system,
                 },
             )
             raise
@@ -48,11 +47,15 @@ class TicketActionService:
             metadata={
                 "action_type": action.action_type,
                 "action_id": str(action.id),
+                "is_system": is_system,
             },
         )
-
-        # ✅ THIS IS WHERE updates_ticket_status LIVES
-        if action.updates_ticket_status and len(action.updates_ticket_status) > 0:
+        # Update corresponding ticket status
+        if (
+            ticket
+            and action.updates_ticket_status
+            and len(action.updates_ticket_status) > 0
+        ):
             old_status = ticket.status
             ticket.status = action.updates_ticket_status
             ticket.save(update_fields=["status"])

@@ -35,14 +35,7 @@
               {% for log in ticket.audit_logs.all %}
                 <li class="list-group-item small">
                   <div class="d-flex justify-content-between">
-                    <span>
-                      {% if log.success %}
-                        <span class="text-success">●</span>
-                      {% else %}
-                        <span class="text-danger">●</span>
-                      {% endif %}
-                      {{ log.message }}
-                    </span>
+                    <span class="{% if not log.success %}text-danger{% endif %}">{{ log.message }}</span>
                     <span class="text-muted">{{ log.created_at|date:"M d, H:i" }}</span>
                   </div>
                   <div class="text-muted">
@@ -106,25 +99,32 @@
         </div>
       </div>
       <!-- Action form -->
-      {% if ticket.actions.exists %}
+      {% if ticket.manual_actions.exists %}
         <div class="card mb-3">
           <div class="card-header">
             <strong>Actions</strong>
+            {% if ticket.status != "inprogress" %}<small>(Disabled due to ticket status)</small>{% endif %}
           </div>
           <div class="card-body">
             <div class="d-flex flex-wrap gap-2">
-              {% for action in ticket.actions.all %}
-                {% if not action.is_completed and not ticket.is_closed %}
+              {% for action in ticket.manual_actions %}
+                {% if action.is_completed %}
+                  {# Completed action #}
+                  <button class="btn btn-sm btn-outline-secondary"
+                          disabled
+                          title="Action already completed">{{ action.label }}</button>
+                {% elif ticket.status != "inprogress" %}
+                  <button class="btn btn-sm btn-outline-secondary"
+                          disabled
+                          title="Ticket must be in progress to run actions">{{ action.label }}</button>
+                {% else %}
+                  {# Active + allowed #}
                   <form method="post"
                         action="{% url 'tickets:run_action' action.id %}"
                         class="m-0">
                     {% csrf_token %}
                     <button type="submit" class="btn btn-sm btn-{{ action.button_color }}">{{ action.label }}</button>
                   </form>
-                {% else %}
-                  <button class="btn btn-sm btn-outline-secondary"
-                          disabled
-                          title="Action already completed">{{ action.label }}</button>
                 {% endif %}
               {% endfor %}
             </div>

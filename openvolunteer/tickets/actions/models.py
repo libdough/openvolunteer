@@ -1,22 +1,13 @@
 import uuid
 
 from django.db import models
+from django.db.models.signals import post_save
 
 from openvolunteer.tickets.models import TicketStatus
 
-
-class TicketActionButtonColor(models.TextChoices):
-    PRIMARY = "primary", "Primary (blue)"
-    DANGER = "danger", "Danger (red)"
-    SECONDARY = "secondary", "Secondary (gray)"
-
-
-class TicketActionType(models.TextChoices):
-    NOOP = "noop", "No-op (status changes only)"
-    UPDATE_SHIFT_STATUS = "update_shift_status", "Update shift assignment status"
-    CREATE_SHIFT_ASSIGNMENT = "create_shift_assignment", "Create shift assignment"
-    REMOVE_SHIFT_ASSIGNMENT = "remove_shift_assignment", "Remove shift assignment"
-    UPDATE_EVENT_STATUS = "update_event_status", "Update event status"
+from .enum import TicketActionButtonColor
+from .enum import TicketActionRunWhen
+from .enum import TicketActionType
 
 
 class TicketActionTemplate(models.Model):
@@ -51,6 +42,17 @@ class TicketActionTemplate(models.Model):
         choices=TicketStatus.choices,
     )
 
+    run_when = models.CharField(
+        max_length=20,
+        choices=TicketActionRunWhen.choices,
+        default=TicketActionRunWhen.MANUAL,
+        help_text=(
+            "When this action should be executed. "
+            "Manual actions appear as buttons. "
+            "Automatic actions run without user interaction."
+        ),
+    )
+
     button_color = models.CharField(
         max_length=20,
         choices=TicketActionButtonColor,
@@ -60,7 +62,20 @@ class TicketActionTemplate(models.Model):
     is_active = models.BooleanField(default=True)
 
     def __str__(self):
-        return self.label
+        if self.label:
+            return self.label
+        return self.slug
+
+
+# Custom manager to trigger signals on bulk create
+class TicketActionManager(models.Manager):
+    def bulk_create(self, objs, **kwargs):
+        s = super().bulk_create(objs, **kwargs)
+        for i in objs:
+            # sending post_save signal for individual object
+            post_save.send(i.__class__, instance=i, created=True)
+
+        return s
 
 
 class TicketAction(models.Model):
@@ -73,6 +88,12 @@ class TicketAction(models.Model):
         "tickets.Ticket",
         on_delete=models.CASCADE,
         related_name="actions",
+    )
+
+    run_when = models.CharField(
+        max_length=20,
+        choices=TicketActionRunWhen.choices,
+        default=TicketActionRunWhen.MANUAL,
     )
 
     action_type = models.CharField(
@@ -108,6 +129,17 @@ class TicketAction(models.Model):
         blank=True,
         related_name="ticket_actions",
     )
+
+    # Custom manager to trigger signals on bulk create
+    objects = TicketActionManager()
+
+    class Meta:
+        indexes = [
+            models.Index(
+                fields=["ticket", "run_when", "is_completed"],
+                name="tic_runwhen_completed_idx",
+            ),
+        ]
 
     def __str__(self):
         return f"{self.label} ({self.ticket})"

@@ -1,0 +1,26 @@
+from django.db import models
+
+
+class TicketActionButtonColor(models.TextChoices):
+    PRIMARY = "primary", "Primary (blue)"
+    DANGER = "danger", "Danger (red)"
+    SECONDARY = "secondary", "Secondary (gray)"
+    SUCCESS = "success", "Success (green)"
+    WARNING = "warning", "Warning (yellow)"
+    LINK = "link", "link (no-color)"
+
+
+class TicketActionType(models.TextChoices):
+    NOOP = "noop", "No-op (ticket status changes only)"
+    UPDATE_SHIFT_STATUS = "update_shift_status", "Update shift assignment status"
+    CREATE_SHIFT_ASSIGNMENT = "create_shift_assignment", "Create shift assignment"
+    REMOVE_SHIFT_ASSIGNMENT = "remove_shift_assignment", "Remove shift assignment"
+    UPDATE_EVENT_STATUS = "update_event_status", "Update event status"
+
+
+class TicketActionRunWhen(models.TextChoices):
+    MANUAL = "manual", "Manual"
+    ON_CREATE = "on_create", "On ticket creation"
+    ON_CLAIM = "on_claim", "On ticket claim"
+    ON_UNCLAIM = "on_unclaim", "On ticket unclaim"
+    ON_UPDATE = "on_update", "On ticket update"
