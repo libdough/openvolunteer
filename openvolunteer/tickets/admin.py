@@ -203,7 +203,7 @@ class TicketAdmin(admin.ModelAdmin):
     search_fields = (
         "name",
         "description",
-        "instructions",
+        "status",
     )
 
     readonly_fields = (
@@ -247,10 +247,7 @@ class TicketAdmin(admin.ModelAdmin):
         (
             "Details",
             {
-                "fields": (
-                    "description",
-                    "instructions",
-                ),
+                "fields": ("description",),
             },
         ),
         (
@@ -324,11 +321,13 @@ class TicketAdmin(admin.ModelAdmin):
     @admin.action(description="Unassign tickets")
     def unassign(self, request, queryset):
         queryset.update(assigned_to=None)
+        # TODO: Implement reset_ticket_actions
 
 
 @admin.register(TicketActionTemplate)
 class TicketActionTemplateAdmin(admin.ModelAdmin):
     list_display = (
+        "slug",
         "label",
         "action_type",
         "button_color",
@@ -349,6 +348,7 @@ class TicketActionTemplateAdmin(admin.ModelAdmin):
             None,
             {
                 "fields": (
+                    "slug",
                     "label",
                     "action_type",
                     "button_color",

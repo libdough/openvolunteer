@@ -39,7 +39,20 @@ def create_shift_assignment(*, ticket, action, user):
     )
 
 
+def noop_action(*, ticket, action, user):
+    """
+    No-op action.
+
+    Used for actions that only:
+    - mark themselves completed
+    - optionally update ticket status
+    - produce an audit log
+    """
+    return
+
+
 ACTION_HANDLERS = {
+    TicketActionType.NOOP: noop_action,
     TicketActionType.UPDATE_SHIFT_STATUS: update_shift_status,
     TicketActionType.CREATE_SHIFT_ASSIGNMENT: create_shift_assignment,
 }

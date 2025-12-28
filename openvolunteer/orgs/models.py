@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# orgs/models.py
 import uuid
 
 from django.conf import settings

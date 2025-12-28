@@ -12,6 +12,7 @@ class TicketActionButtonColor(models.TextChoices):
 
 
 class TicketActionType(models.TextChoices):
+    NOOP = "noop", "No-op (status changes only)"
     UPDATE_SHIFT_STATUS = "update_shift_status", "Update shift assignment status"
     CREATE_SHIFT_ASSIGNMENT = "create_shift_assignment", "Create shift assignment"
     REMOVE_SHIFT_ASSIGNMENT = "remove_shift_assignment", "Remove shift assignment"
@@ -19,6 +20,11 @@ class TicketActionType(models.TextChoices):
 
 
 class TicketActionTemplate(models.Model):
+    slug = models.SlugField(
+        unique=True,
+        help_text="Slug to uniquely identify this action template",
+    )
+
     action_type = models.CharField(
         max_length=50,
         choices=TicketActionType,
