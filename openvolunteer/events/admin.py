@@ -1,9 +1,12 @@
 #!/usr/bin/env python3
 from django.contrib import admin
 from django.contrib import messages
+from django.shortcuts import redirect
+from django.shortcuts import render
 
 from openvolunteer.tickets.services import generate_tickets_for_event
 
+from .forms import GenerateTicketsForm
 from .models import Event
 from .models import EventStatus
 from .models import EventTemplate
@@ -207,20 +210,60 @@ class EventAdmin(admin.ModelAdmin):
         queryset.update(event_status=EventStatus.FINISHED)
 
     @admin.action(description="Generate tickets from EventTemplate")
-    def generate_tickets_from_template(self, request, queryset):
-        created = 0
-        skipped = 0
-        warned = 0
+    def generate_tickets_from_template(self, request, queryset):  # noqa: C901
+        if "apply" not in request.POST:
+            event_templates = queryset.values_list("template", flat=True)
 
-        for event in queryset.select_related("template", "org").prefetch_related(
-            "ticket_batches",
-        ):
+            if not event_templates:
+                self.message_user(
+                    request,
+                    "Selected events have no EventTemplate.",
+                    level=messages.WARNING,
+                )
+                return None
+
+            form = GenerateTicketsForm(
+                event_templates=event_templates,
+            )
+
+            return render(
+                request,
+                "admin/events/generate_tickets_from_templates.html",
+                {
+                    "events": queryset,
+                    "form": form,
+                    "action_checkbox_name": admin.helpers.ACTION_CHECKBOX_NAME,
+                },
+            )
+
+        form = GenerateTicketsForm(
+            event_templates=queryset.values_list("template", flat=True),
+            data=request.POST,
+        )
+
+        if not form.is_valid():
+            return render(
+                request,
+                "admin/events/generate_tickets_from_templates.html",
+                {
+                    "events": queryset,
+                    "form": form,
+                    "action_checkbox_name": admin.helpers.ACTION_CHECKBOX_NAME,
+                },
+            )
+
+        selected_templates = form.cleaned_data["ticket_templates"]
+        batch_name = form.cleaned_data["batch_name"]
+
+        created = skipped = warned = 0
+
+        for event in queryset.select_related("template", "org"):
             try:
                 if not event.template:
                     skipped += 1
                     messages.warning(
                         request,
-                        f"Event '{event}' has no EventTemplate attached.",
+                        f"Event '{event}' has no EventTemplate.",
                     )
                     continue
 
@@ -238,6 +281,8 @@ class EventAdmin(admin.ModelAdmin):
                 batch, tickets = generate_tickets_for_event(
                     event=event,
                     created_by=request.user,
+                    ticket_templates=selected_templates,
+                    batch_name=batch_name or None,
                     reason="Generated via admin action",
                 )
 
@@ -247,8 +292,8 @@ class EventAdmin(admin.ModelAdmin):
                     f"Created {len(tickets)} tickets for '{event}' "
                     f"(batch: {batch.name})",
                 )
-            # ruff: noqa: BLE001
-            except Exception as exc:
+
+            except Exception as exc:  # noqa: BLE001
                 skipped += 1
                 messages.error(
                     request,
@@ -264,12 +309,13 @@ class EventAdmin(admin.ModelAdmin):
         if warned:
             messages.warning(
                 request,
-                "One or more events already had ticket batches. "
-                "Review batches to avoid duplicate work.",
+                "One or more events already had ticket batches.",
             )
 
         if skipped and not created:
             messages.warning(request, "No tickets were generated.")
+
+        return redirect(request.get_full_path())
 
 
 @admin.register(EventTemplate)

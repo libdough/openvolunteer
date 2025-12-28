@@ -32,7 +32,7 @@ def install_default_ticket_actions():
 
     create_assignment, _ = TicketActionTemplate.objects.get_or_create(
         slug="create_assignment",
-        action_type=TicketActionType.CREATE_SHIFT_ASSIGNMENT,
+        action_type=TicketActionType.UPSERT_SHIFT_ASSIGNMENT,
         label="Confirm Interest",
         defaults={
             "description": (
@@ -50,7 +50,7 @@ def install_default_ticket_actions():
 
     create_assignment_partial, _ = TicketActionTemplate.objects.get_or_create(
         slug="create_assignment_partial",
-        action_type=TicketActionType.CREATE_SHIFT_ASSIGNMENT,
+        action_type=TicketActionType.UPSERT_SHIFT_ASSIGNMENT,
         label="Maybe",
         defaults={
             "description": (
@@ -201,8 +201,8 @@ def install_default_ticket_templates(actions):
                 "effort to make a difference.\n"
                 "\n"
                 "Would you be interested in volunteering for "
-                "{{event.type}} on {{starts_at_date}}"
-                "at {{starts_at_time.cdt}}?\n"
+                "{{event_type}} on {{event_starts_at.date.est}}"
+                "at {{event_starts_at.time.est}}?\n"
                 "\n"
                 "Please let us know!\n"
                 "```\n"
@@ -233,7 +233,7 @@ def install_default_ticket_templates(actions):
             "description_template": (
                 "Hi {{person.discord}}!\n"
                 "Please reconfirm your availability for "
-                "**{{ event.name }}** on {{ starts_at_date }}.\n"
+                "**{{ event.name }}** on {{ event_starts_at.est }}.\n"
                 "See You soon!"
             ),
             "default_priority": 4,

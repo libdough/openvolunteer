@@ -1,0 +1,23 @@
+{% extends "admin/base_site.html" %}
+
+{% load i18n %}
+
+{% block content %}
+  <h1>{% trans "Generate Tickets" %}</h1>
+  <p>{% trans "Generating tickets for the following events:" %}</p>
+  <ul>
+    {% for event in events %}<li>{{ event }}</li>{% endfor %}
+  </ul>
+  <form method="post">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <input type="hidden" name="action" value="generate_tickets_from_template" />
+    <input type="hidden" name="apply" value="1" />
+    {% for obj in events %}<input type="hidden" name="{{ action_checkbox_name }}" value="{{ obj.pk }}" />{% endfor %}
+    <input type="hidden" name="apply" value="1" />
+    <div class="submit-row">
+      <input type="submit" value="{% trans "Generate tickets" %}" class="default" />
+      <a href="#" onclick="window.history.back(); return false;">{% trans "Cancel" %}</a>
+    </div>
+  </form>
+{% endblock content %}

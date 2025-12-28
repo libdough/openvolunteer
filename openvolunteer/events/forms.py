@@ -1,6 +1,7 @@
 from django import forms
 
 from openvolunteer.orgs.models import Organization
+from openvolunteer.tickets.models import TicketTemplate
 
 from .models import Event
 from .models import Shift
@@ -94,3 +95,30 @@ class ShiftAssignmentForm(forms.ModelForm):
     class Meta:
         model = ShiftAssignment
         fields = []
+
+
+class GenerateTicketsForm(forms.Form):
+    ticket_templates = forms.ModelMultipleChoiceField(
+        queryset=TicketTemplate.objects.none(),
+        required=True,
+        widget=forms.CheckboxSelectMultiple,
+        help_text="Select which ticket templates to generate.",
+    )
+
+    batch_name = forms.CharField(
+        required=False,
+        max_length=200,
+        help_text="Optional override for the ticket batch name.",
+    )
+
+    def __init__(self, *, event_templates, **kwargs):
+        super().__init__(**kwargs)
+
+        self.fields["ticket_templates"].queryset = (
+            TicketTemplate.objects.filter(
+                event_templates__in=event_templates,
+                is_active=True,
+            )
+            .distinct()
+            .order_by("name")
+        )

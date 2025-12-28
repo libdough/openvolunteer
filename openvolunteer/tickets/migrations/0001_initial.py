@@ -23,7 +23,7 @@ class Migration(migrations.Migration):
             fields=[
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
                 ('slug', models.SlugField(help_text='Slug to uniquely identify this action template', unique=True)),
-                ('action_type', models.CharField(choices=[('noop', 'No-op (status changes only)'), ('update_shift_status', 'Update shift assignment status'), ('create_shift_assignment', 'Create shift assignment'), ('remove_shift_assignment', 'Remove shift assignment'), ('update_event_status', 'Update event status')], max_length=50)),
+                ('action_type', models.CharField(choices=[('noop', 'No-op (status changes only)'), ('update_shift_status', 'Update shift assignment status'), ('upsert_shift_assignment', 'Upsert shift assignment'), ('remove_shift_assignment', 'Remove shift assignment'), ('update_event_status', 'Update event status')], max_length=50)),
                 ('label', models.CharField(help_text='Button label shown to users', max_length=100)),
                 ('description', models.TextField(blank=True)),
                 ('config', models.JSONField(blank=True, default=dict, help_text='Action configuration and defaults')),

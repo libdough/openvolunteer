@@ -13,7 +13,7 @@ class TicketActionButtonColor(models.TextChoices):
 class TicketActionType(models.TextChoices):
     NOOP = "noop", "No-op (ticket status changes only)"
     UPDATE_SHIFT_STATUS = "update_shift_status", "Update shift assignment status"
-    CREATE_SHIFT_ASSIGNMENT = "create_shift_assignment", "Create shift assignment"
+    UPSERT_SHIFT_ASSIGNMENT = "upsert_shift_assignment", "Upsert shift assignment"
     REMOVE_SHIFT_ASSIGNMENT = "remove_shift_assignment", "Remove shift assignment"
     UPDATE_EVENT_STATUS = "update_event_status", "Update event status"
 

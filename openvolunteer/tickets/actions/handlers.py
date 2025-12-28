@@ -25,10 +25,10 @@ def update_shift_status(*, ticket, action, user):
     assignment.save(update_fields=["status"])
 
 
-def create_shift_assignment(*, ticket, action, user):
+def upsert_shift_assignment(*, ticket, action, user):
     shift = _get_ticket_shift(ticket)
 
-    ShiftAssignment.objects.create(
+    ShiftAssignment.objects.update_or_create(
         shift=shift,
         person=ticket.person,
         status=action.config.get(
@@ -54,5 +54,5 @@ def noop_action(*, ticket, action, user):
 ACTION_HANDLERS = {
     TicketActionType.NOOP: noop_action,
     TicketActionType.UPDATE_SHIFT_STATUS: update_shift_status,
-    TicketActionType.CREATE_SHIFT_ASSIGNMENT: create_shift_assignment,
+    TicketActionType.UPSERT_SHIFT_ASSIGNMENT: upsert_shift_assignment,
 }

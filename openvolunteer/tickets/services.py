@@ -23,6 +23,7 @@ TIMEZONES = {
     "utc": ("UTC", ZoneInfo("UTC")),
     "est": ("EST", ZoneInfo("America/New_York")),
     "cdt": ("CDT", ZoneInfo("America/Chicago")),
+    "mst": ("MT", ZoneInfo("America/Denver")),
     "pdt": ("PDT", ZoneInfo("America/Los_Angeles")),
     "cet": ("CET", ZoneInfo("Europe/Paris")),
 }
@@ -30,25 +31,32 @@ TIMEZONES = {
 
 def format_event_times(dt):
     """
-    Returns a dict-like object suitable for template access:
+    Returns a dict suitable for template access:
 
-    starts_at_time
-    starts_at_time.est
-    starts_at_time.cdt
-    starts_at_time.pdt
-    starts_at_time.cet
+    starts_at.utc
+    starts_at.cdt
+    starts_at.date.utc
+    starts_at.time.cdt
     """
 
-    def fmt(label, tz):
-        localized = dt.astimezone(tz)
-        return f"({localized.strftime('%-I:%M %p')} {label})"
-
-    times = {}
+    result = {
+        "date": {},
+        "time": {},
+    }
 
     for key, (label, tz) in TIMEZONES.items():
-        times[key] = fmt(label, tz)
+        localized = dt.astimezone(tz)
 
-    return times
+        # Full datetime string
+        result[key] = localized.strftime(f"%b %-d, %Y %-I:%M %p {label}")
+
+        # Date-only
+        result["date"][key] = localized.strftime("%b %-d, %Y")
+
+        # Time-only
+        result["time"][key] = localized.strftime("%-I:%M %p")
+
+    return result
 
 
 def create_actions_for_ticket(*, ticket, ticket_template):
@@ -180,13 +188,18 @@ def create_ticket(
     """
 
     context = {
-        "event": event,
-        "org": event.org,
-        "starts_at": event.starts_at,
-        "assigned_user": None,
+        "event_title": event.title,
+        "event_owner": event.owned_by.name or event.owned_by.username,
+        "event_type": event.template.name,
+        "org_name": event.org.name,
+        "event_starts_at": format_event_times(event.starts_at),
+        "event_ends_at": format_event_times(event.ends_at),
+        "shift_starts_at": format_event_times(shift.starts_at),
+        "shift_ends_at": format_event_times(shift.ends_at),
         "person": None,  # lazy load below
         "task_name": template.name,
         "task_type": event.template.name,
+        "reporter_name": created_by.name or created_by.username,
     }
 
     # Lazy-load person only if template needs it
@@ -194,11 +207,11 @@ def create_ticket(
     context["person"] = person
 
     name = render_template(template.ticket_name_template, context)
-    message = render_template(template.description_template, context)
+    description = render_template(template.description_template, context)
 
     ticket = Ticket.objects.create(
         name=name,
-        description=message,
+        description=description,
         org=event.org,
         event=event,
         person=person,
