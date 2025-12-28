@@ -1,0 +1,37 @@
+{% comment %}
+Reusable action button group for tickets.
+
+Context:
+- ticket (Ticket instance)
+- actions (QuerySet of TicketAction) [usually ticket.manual_actions]
+{% endcomment %}
+{% if actions.exists %}
+  <div class="card mb-3">
+    <div class="card-header">
+      <strong>Actions</strong>
+      {% if ticket.status != "inprogress" %}<small class="text-muted">(Disabled due to ticket status)</small>{% endif %}
+    </div>
+    <div class="card-body">
+      <div class="d-flex flex-wrap gap-2">
+        {% for action in actions %}
+          {% if action.is_completed %}
+            <button class="btn btn-sm btn-outline-secondary"
+                    disabled
+                    title="Action already completed">{{ action.label }}</button>
+          {% elif ticket.status != "inprogress" %}
+            <button class="btn btn-sm btn-outline-secondary"
+                    disabled
+                    title="Ticket must be in progress to run actions">{{ action.label }}</button>
+          {% else %}
+            <form method="post"
+                  action="{% url 'tickets:run_action' action.id %}"
+                  class="m-0">
+              {% csrf_token %}
+              <button type="submit" class="btn btn-sm btn-{{ action.button_color }}">{{ action.label }}</button>
+            </form>
+          {% endif %}
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+{% endif %}

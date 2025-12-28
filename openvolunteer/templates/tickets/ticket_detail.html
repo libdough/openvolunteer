@@ -99,38 +99,9 @@
         </div>
       </div>
       <!-- Action form -->
-      {% if ticket.manual_actions.exists %}
-        <div class="card mb-3">
-          <div class="card-header">
-            <strong>Actions</strong>
-            {% if ticket.status != "inprogress" %}<small>(Disabled due to ticket status)</small>{% endif %}
-          </div>
-          <div class="card-body">
-            <div class="d-flex flex-wrap gap-2">
-              {% for action in ticket.manual_actions %}
-                {% if action.is_completed %}
-                  {# Completed action #}
-                  <button class="btn btn-sm btn-outline-secondary"
-                          disabled
-                          title="Action already completed">{{ action.label }}</button>
-                {% elif ticket.status != "inprogress" %}
-                  <button class="btn btn-sm btn-outline-secondary"
-                          disabled
-                          title="Ticket must be in progress to run actions">{{ action.label }}</button>
-                {% else %}
-                  {# Active + allowed #}
-                  <form method="post"
-                        action="{% url 'tickets:run_action' action.id %}"
-                        class="m-0">
-                    {% csrf_token %}
-                    <button type="submit" class="btn btn-sm btn-{{ action.button_color }}">{{ action.label }}</button>
-                  </form>
-                {% endif %}
-              {% endfor %}
-            </div>
-          </div>
-        </div>
-      {% endif %}
+      {% with ticket=ticket actions=ticket.manual_actions %}
+        {% include "components/ticket_actions.html" %}
+      {% endwith %}
       <!-- Update form -->
       <div class="card">
         <div class="card-body">
