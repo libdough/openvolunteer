@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+
 import pytest
 
 from openvolunteer.users.models import User
