@@ -254,8 +254,8 @@ def install_default_ticket_templates(actions):
             "ticket_name_template": "Distribute phone numbers to {{person.discord}}",
             "description_template": (
                 "Distribute phone bank materials for "
-                "**{{ event.name }}**."
-                "Contact {{event.owned_by}} for more details."
+                "**{{ event.name }}**. \n\n"
+                "Please contact {{event.owned_by}} for more details."
             ),
             "default_priority": 2,
             "claimable": False,

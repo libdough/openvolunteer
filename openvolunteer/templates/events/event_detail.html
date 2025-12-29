@@ -33,15 +33,12 @@
             <div class="mb-3">
               <strong>Location:</strong>
               {{ event.location_name }}
-              {% if event.location_address %}
-                <br />
-                <div class="text-muted">{{ event.location_address }}</div>
-              {% endif %}
+              {% if event.location_address %}<div class="text-muted inline-block">({{ event.location_address }})</div>{% endif %}
             </div>
           {% endif %}
           <div class="mb-3">
             <strong>Event Type:</strong>
-            {{ event.get_event_type_display }}
+            {{ event.template.name }}
           </div>
           <div>
             <strong>Event Status:</strong>

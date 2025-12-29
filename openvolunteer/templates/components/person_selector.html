@@ -63,8 +63,11 @@
 
   <!-- Selected -->
   <div class="person-selected">
-    <div class="fw-semibold mb-2">
-      Selected people (<span class="person-selected-count">0</span>)
+    <div class="d-flex justify-content-between align-items-center mb-2">
+      <div class="fw-semibold mb-2">
+        Selected people (<span class="person-selected-count">0</span>)
+      </div>
+      <button type="button" class="btn btn-sm btn-danger remove-all">Remove All</button>
     </div>
     <div class="person-selected-list"></div>
     <div class="text-muted small fst-italic empty-selected d-none">
@@ -162,6 +165,28 @@
           count.textContent = qs(`select[name="{{ input_name }}"]`, selector).options.length;
           qs(".empty-selected", selector)
             .classList.toggle("d-none", count.textContent !== "0");
+          return;
+        }
+
+        /* Remove all */
+        if (e.target.closest(".remove-all")) {
+          e.preventDefault();
+
+          const select = qs('select[name="{{ input_name }}"]', selector);
+          const list = qs(".person-selected-list", selector);
+          const count = qs(".person-selected-count", selector);
+          const empty = qs(".empty-selected", selector);
+
+          // Clear hidden select
+          Array.from(select.options).forEach(opt => opt.remove());
+
+          // Clear visible list
+          list.innerHTML = "";
+
+          // Update UI
+          count.textContent = "0";
+          empty.classList.remove("d-none");
+
           return;
         }
 
