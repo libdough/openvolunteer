@@ -32,6 +32,9 @@ def filter_assignment(qs, request, value):
     if value == "unassigned":
         return qs.filter(assigned_to__isnull=True)
 
+    if value == "others":
+        return qs.filter(assigned_to__isnull=False).exclude(assigned_to=request.user)
+
     return qs
 
 
@@ -72,11 +75,11 @@ TICKET_FILTERS = [
     },
     {
         "name": "event_type",
-        "label": "Event Template",
+        "label": "Event Type",
         "type": "select",
         "choices": lambda request: (
             EventTemplate.objects.filter(
-                org__memberships__user=request.user,
+                Q(org__memberships__user=request.user) | Q(org__isnull=True),
             ).distinct()
         ),
         "lookup": "event__template",
@@ -96,6 +99,7 @@ TICKET_FILTERS = [
         "type": "select",
         "choices": [
             ("me", "Assigned to me"),
+            ("others", "Assigned to others"),
             ("unassigned", "Unassigned"),
         ],
         "filter": filter_assignment,

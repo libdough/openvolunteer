@@ -2,6 +2,7 @@ from django import forms
 
 from openvolunteer.orgs.models import Organization
 from openvolunteer.people.models import Person
+from openvolunteer.tickets.models import Ticket
 
 from .models import Event
 from .models import Shift
@@ -116,10 +117,33 @@ class GenerateTicketsForTemplateForm(forms.Form):
         help_text="Optional override for the ticket batch name.",
     )
 
-    def __init__(self, *, event, people_queryset, shifts, **kwargs):
+    priority = forms.TypedChoiceField(
+        required=False,
+        choices=Ticket.Priority.choices,
+        coerce=int,
+        widget=forms.Select(
+            attrs={
+                "class": "form-select form-select-sm w-auto",
+            },
+        ),
+        help_text="The priority for this ticket (p0 is higest, p5 is lowest)",
+    )
+
+    def __init__(
+        self,
+        *,
+        event,
+        people_queryset,
+        shifts,
+        default_priority=None,
+        **kwargs,
+    ):
         super().__init__(**kwargs)
 
         self.fields["people"].queryset = people_queryset
+
+        if default_priority is not None:
+            self.fields["priority"].initial = default_priority
 
         # Only show shift selector if non-default shifts exist
         non_default = shifts.exclude(is_default=True)

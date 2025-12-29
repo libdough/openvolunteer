@@ -30,6 +30,51 @@ def install_default_ticket_actions():
         },
     )
 
+    mark_introduced, _ = TicketActionTemplate.objects.get_or_create(
+        slug="mark_introduced",
+        action_type=TicketActionType.REMOVE_TAG,
+        label="Mark Person as Introduced",
+        defaults={
+            "run_when": TicketActionRunWhen.MANUAL,
+            "description": (
+                "This person was unintroduced to the organization "
+                "this action marks that we have now said hello"
+            ),
+            "button_color": TicketActionButtonColor.PRIMARY,
+            "config": {
+                "tag": "unintroduced",
+            },
+        },
+    )
+
+    mark_interest_phone_banking, _ = TicketActionTemplate.objects.get_or_create(
+        slug="mark_interest_phone_banking",
+        action_type=TicketActionType.UPSERT_TAG,
+        label="Interest Phone Banking",
+        defaults={
+            "run_when": TicketActionRunWhen.MANUAL,
+            "description": ("Mark this person as interested in phone banking"),
+            "button_color": TicketActionButtonColor.SECONDARY,
+            "config": {
+                "tag": "phonebank",
+            },
+        },
+    )
+
+    mark_interest_canvassing, _ = TicketActionTemplate.objects.get_or_create(
+        slug="mark_interest_phone_banking",
+        action_type=TicketActionType.UPSERT_TAG,
+        label="Interest Phone Banking",
+        defaults={
+            "run_when": TicketActionRunWhen.MANUAL,
+            "description": ("Mark this person as interested in canvassing"),
+            "button_color": TicketActionButtonColor.SECONDARY,
+            "config": {
+                "tag": "canvasser",
+            },
+        },
+    )
+
     create_assignment, _ = TicketActionTemplate.objects.get_or_create(
         slug="create_assignment",
         action_type=TicketActionType.UPSERT_SHIFT_ASSIGNMENT,
@@ -78,6 +123,17 @@ def install_default_ticket_actions():
             ),
             "button_color": TicketActionButtonColor.PRIMARY,
             "updates_ticket_status": TicketStatus.COMPLETED,
+        },
+    )
+
+    block_ticket, _ = TicketActionTemplate.objects.get_or_create(
+        slug="block_ticket",
+        action_type=TicketActionType.NOOP,
+        label="Block Ticket",
+        defaults={
+            "description": ("Marks this ticket as blocked"),
+            "button_color": TicketActionButtonColor.WARNING,
+            "updates_ticket_status": TicketStatus.BLOCKED,
         },
     )
 
@@ -135,7 +191,11 @@ def install_default_ticket_actions():
         "initialize_assignment": initialize_assignment,
         "create_assignment": create_assignment,
         "create_assignment_partial": create_assignment_partial,
+        "mark_introduced": mark_introduced,
+        "mark_interest_phone_banking": mark_interest_phone_banking,
+        "mark_interest_canvassing": mark_interest_canvassing,
         "complete_ticket": complete_ticket,
+        "block_ticket": block_ticket,
         "close_ticket": close_ticket,
         "update_assignment_confirm": update_assignment_confirm,
         "update_assignment_rejected": update_assignment_rejected,
@@ -180,7 +240,12 @@ def install_default_ticket_templates(actions):
     )
     if created:
         introduction.action_templates.set(
-            [actions["complete_ticket"], actions["close_ticket"]],
+            [
+                actions["mark_introduced"],
+                actions["mark_interest_phone_banking"],
+                actions["mark_interest_canvassing"],
+                actions["close_ticket"],
+            ],
         )
 
     recruit, created = TicketTemplate.objects.get_or_create(
@@ -212,7 +277,7 @@ def install_default_ticket_templates(actions):
                 "5. If they confirm their interest, click the `confirm` action button. "
                 "If they are not interested, click the `reject` action button.\n"
             ),
-            "default_priority": 2,
+            "default_priority": 3,
             "claimable": True,
         },
     )

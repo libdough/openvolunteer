@@ -49,3 +49,18 @@ def user_can_manage_people(user, org) -> bool:
 
     m = _membership(user, org)
     return m and m.role in {OrgRole.OWNER, OrgRole.ADMIN, OrgRole.ORGANIZER}
+
+
+# User has some level of edit participation
+def user_can_participate(user, org) -> bool:
+    if not user.is_authenticated:
+        return False
+
+    if user.is_staff or user.is_superuser:
+        return True
+
+    if not org:
+        return False
+
+    m = _membership(user, org)
+    return m and m.role is not OrgRole.VIEWER

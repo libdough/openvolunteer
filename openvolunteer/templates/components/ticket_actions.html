@@ -9,7 +9,11 @@ Context:
   <div class="card mb-3">
     <div class="card-header">
       <strong>Actions</strong>
-      {% if ticket.status != "inprogress" %}<small class="text-muted">(Disabled due to ticket status)</small>{% endif %}
+      {% if ticket.status != "inprogress" %}
+        <small class="text-muted">(Disabled due to ticket status)</small>
+      {% elif not can_run_action %}
+        <small class="text-muted">(Disabled due to lack of permissions)</small>
+      {% endif %}
     </div>
     <div class="card-body">
       <div class="d-flex flex-wrap gap-2">
@@ -18,7 +22,7 @@ Context:
             <button class="btn btn-sm btn-outline-secondary"
                     disabled
                     title="Action already completed">{{ action.label }}</button>
-          {% elif ticket.status != "inprogress" %}
+          {% elif not can_run_action %}
             <button class="btn btn-sm btn-outline-secondary"
                     disabled
                     title="Ticket must be in progress to run actions">{{ action.label }}</button>

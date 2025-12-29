@@ -14,8 +14,9 @@ class TicketActionType(models.TextChoices):
     NOOP = "noop", "No-op (ticket status changes only)"
     UPDATE_SHIFT_STATUS = "update_shift_status", "Update shift assignment status"
     UPSERT_SHIFT_ASSIGNMENT = "upsert_shift_assignment", "Upsert shift assignment"
-    REMOVE_SHIFT_ASSIGNMENT = "remove_shift_assignment", "Remove shift assignment"
     UPDATE_EVENT_STATUS = "update_event_status", "Update event status"
+    UPSERT_TAG = "upsert_tag", "Upsert tag on person"
+    REMOVE_TAG = "remove_tag", "Remove tag from person"
 
 
 class TicketActionRunWhen(models.TextChoices):

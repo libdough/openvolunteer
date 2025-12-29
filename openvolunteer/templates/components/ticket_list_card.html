@@ -11,6 +11,8 @@
   </div>
   <div class="card-body p-0">
     {% if tickets %}
+      {% load ticket_perms %}
+
       <table class="table table-sm table-hover mb-0">
         <thead class="table-light">
           <tr>
@@ -22,6 +24,7 @@
         </thead>
         <tbody>
           {% for ticket in tickets %}
+            {% can_claim_ticket request.user ticket as can_claim %}
             <tr class="{% if ticket.is_closed %}text-muted{% endif %}">
               <td class="fw-medium">
                 <a href="{% url 'tickets:ticket_detail' ticket.id %}">{{ ticket.name }}</a>
@@ -41,9 +44,15 @@
               <td class="text-end">
                 <a href="{% url 'tickets:ticket_detail' ticket.id %}"
                    class="btn btn-sm btn-outline-secondary">View</a>
-                {% if show_claim and ticket.claimable and not ticket.assigned_to %}
-                  <a href="{% url 'tickets:claim_ticket' ticket.id %}"
-                     class="btn btn-sm btn-outline-primary ms-1">Claim</a>
+                {% if show_claim %}
+                  {% if can_claim %}
+                    <a href="{% url 'tickets:claim_ticket' ticket.id %}"
+                       class="btn btn-sm btn-outline-primary ms-1">Claim</a>
+                  {% else %}
+                    <a class=" disabled btn btn-sm ms-1">
+                      <s>Claim</s>
+                    </a>
+                  {% endif %}
                 {% endif %}
               </td>
             </tr>

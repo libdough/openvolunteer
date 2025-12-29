@@ -5,6 +5,8 @@
   <div class="card shadow-sm">
     {% include "components/filters.html" %}
     {% if tickets %}
+      {% load ticket_perms %}
+
       <div class="table-responsive">
         <table class="table table-hover mb-0 align-middle">
           <thead class="table-light">
@@ -21,6 +23,7 @@
           </thead>
           <tbody>
             {% for ticket in tickets %}
+              {% can_claim_ticket request.user ticket as can_claim %}
               <tr>
                 <td>
                   <a href="{% url 'tickets:ticket_detail' ticket.id %}"
@@ -66,7 +69,7 @@
                   {% endif %}
                 </td>
                 <td class="text-end text-nowrap">
-                  {% if ticket.claimable and not ticket.assigned_to %}
+                  {% if can_claim %}
                     <a href="{% url 'tickets:claim_ticket' ticket.id %}?next={{ request.get_full_path|urlencode }}"
                        class="btn btn-sm btn-outline-primary ms-1">Claim</a>
                   {% else %}

@@ -11,11 +11,11 @@
   <div class="d-flex justify-content-between align-items-center mb-3">
     <h1>{{ ticket.name }}</h1>
     <div>
-      {% if ticket.claimable and not ticket.assigned_to %}
+      {% if can_claim and ticket.assigned_to != request.user %}
         <a href="{% url 'tickets:claim_ticket' ticket.id %}"
            class="btn btn-sm btn-outline-primary">Claim ticket</a>
       {% endif %}
-      {% if ticket.assigned_to == request.user %}
+      {% if can_unclaim %}
         <a href="{% url 'tickets:unclaim_ticket' ticket.id %}"
            class="btn btn-sm btn-outline-secondary">Unclaim</a>
       {% endif %}
@@ -188,7 +188,7 @@
         </div>
       </div>
       <!-- Action form -->
-      {% with ticket=ticket actions=ticket.manual_actions %}
+      {% with ticket=ticket actions=ticket.manual_actions can_run_action=can_run_action %}
         {% include "components/ticket_actions.html" %}
       {% endwith %}
     </div>

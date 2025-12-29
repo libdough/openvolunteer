@@ -5,6 +5,8 @@ from django.shortcuts import get_object_or_404
 from django.shortcuts import redirect
 from django.views.decorators.http import require_POST
 
+from openvolunteer.tickets.permissions import user_can_run_action
+
 from .models import TicketAction
 from .service import TicketActionService
 
@@ -19,8 +21,7 @@ def run_action(request, action_id):
 
     ticket = action.ticket
 
-    # Extra safety: only assigned user may execute
-    if ticket.assigned_to != request.user:
+    if not user_can_run_action(request.user, ticket, ticket.event):
         return HttpResponseForbidden("You are not allowed to perform this action.")
 
     try:

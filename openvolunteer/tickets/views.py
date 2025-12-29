@@ -31,6 +31,12 @@ from .models import Ticket
 from .models import TicketAuditEvent
 from .models import TicketAuditLog
 from .models import TicketStatus
+from .permissions import user_can_assign_ticket
+from .permissions import user_can_claim_ticket
+from .permissions import user_can_edit_ticket
+from .permissions import user_can_run_action
+from .permissions import user_can_unclaim_ticket
+from .permissions import user_can_view_ticket
 from .services import generate_tickets_for_event
 
 
@@ -57,6 +63,7 @@ def ticket_list(request):
         request,
         "tickets/ticket_list.html",
         {
+            "user_can_assign_ticket": user_can_assign_ticket,
             "tickets": pagination["page_obj"],
             **pagination,
             **filter_ctx,
@@ -75,6 +82,9 @@ def ticket_detail(request, ticket_id):
         ),
         id=ticket_id,
     )
+    if not user_can_view_ticket(request.user, ticket):
+        msg = "User can not view this ticket"
+        raise PermissionDenied(msg)
 
     form = TicketUpdateForm(instance=ticket)
 
@@ -89,6 +99,26 @@ def ticket_detail(request, ticket_id):
         request,
         "tickets/ticket_detail.html",
         {
+            "can_claim": user_can_claim_ticket(
+                request.user,
+                ticket,
+                event=ticket.event,
+            ),
+            "can_unclaim": user_can_unclaim_ticket(
+                request.user,
+                ticket,
+                event=ticket.event,
+            ),
+            "can_edit": user_can_edit_ticket(request.user, ticket, event=ticket.event),
+            "can_run_action": user_can_run_action(
+                request.user,
+                ticket,
+                event=ticket.event,
+            ),
+            "can_assign_ticket": user_can_assign_ticket(
+                request.user,
+                event=ticket.event,
+            ),
             "ticket": ticket,
             "audit_logs": pagination["page_obj"],
             **pagination,
@@ -136,6 +166,7 @@ def generate_tickets_for_event_template(request, event_id, template_id):
         event=event,
         people_queryset=people_qs,
         shifts=shifts,
+        default_priority=ticket_template.default_priority,
         data=request.POST or None,
     )
 
@@ -175,7 +206,7 @@ def generate_tickets_for_event_template(request, event_id, template_id):
 def claim_ticket(request, ticket_id):
     ticket = get_object_or_404(Ticket, id=ticket_id)
 
-    if not ticket.claimable:
+    if not user_can_claim_ticket(request.user, ticket, event=ticket.event):
         return HttpResponseForbidden("This ticket is not claimable.")
 
     if ticket.assigned_to:
@@ -210,7 +241,7 @@ def claim_ticket(request, ticket_id):
 def unclaim_ticket(request, ticket_id):
     ticket = get_object_or_404(Ticket, id=ticket_id)
 
-    if ticket.assigned_to != request.user:
+    if not user_can_unclaim_ticket(request.user, ticket, event=ticket.event):
         return HttpResponseForbidden("You cannot unclaim this ticket.")
 
     ticket.assigned_to = None
@@ -248,12 +279,21 @@ def update_ticket(request, ticket_id):
     if request.method != "POST":
         return redirect("tickets:ticket_detail", ticket_id=ticket.id)
 
+    if not user_can_edit_ticket(request.user, ticket, event=ticket.event):
+        return HttpResponseForbidden("This ticket is not claimable.")
+
     form = TicketUpdateForm(request.POST, instance=ticket)
 
     if form.is_valid():
         changed_fields = {
             field: form.cleaned_data[field] for field in form.changed_data
         }
+        if "assigned_to" in form.changed_data:
+            if not user_can_assign_ticket(request.user, event=ticket.event):
+                messages.error(
+                    "request",
+                    "You do not have permission to assign tickets for this event.",
+                )
 
         form.save()
 
