@@ -17,6 +17,8 @@ from openvolunteer.core.filters import apply_filters
 from openvolunteer.core.pagination import paginate
 from openvolunteer.orgs.models import Organization
 from openvolunteer.people.models import Person
+from openvolunteer.tickets.models import TicketStatus
+from openvolunteer.tickets.queryset import get_filtered_tickets
 from openvolunteer.users.models import User
 
 from .filters import EVENT_FILTERS
@@ -108,6 +110,17 @@ def event_detail(request, event_id):
         "name",
     )
 
+    ticket_ctx = get_filtered_tickets(
+        event=event,
+        exclude_statuses=[
+            TicketStatus.CANCELED,
+            TicketStatus.COMPLETED,
+        ]
+        if not user_can_manage_events(request.user, event)
+        else None,
+        limit=5,
+    )
+
     return render(
         request,
         "events/event_detail.html",
@@ -119,6 +132,7 @@ def event_detail(request, event_id):
             "available_people": available_people,
             "shifts": pagination["page_obj"],
             "ticket_templates": ticket_templates,
+            **ticket_ctx,
             **pagination,
         },
     )

@@ -2,6 +2,10 @@
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
+from django.db.models import Case
+from django.db.models import IntegerField
+from django.db.models import Value
+from django.db.models import When
 from django.http import HttpResponseForbidden
 from django.shortcuts import get_object_or_404
 from django.shortcuts import redirect
@@ -33,8 +37,15 @@ def ticket_list(request):
     tickets = (
         Ticket.objects.select_related("event", "batch", "assigned_to", "person")
         .filter(org__in=orgs_for_user(request.user))
+        .annotate(
+            finished_sort=Case(
+                When(status=TicketStatus.OPEN, then=Value(0)),
+                default=Value(1),
+                output_field=IntegerField(),
+            ),
+        )
         .distinct()
-        .order_by("priority", "-created_at")
+        .order_by("finished_sort", "priority", "-created_at")
     )
 
     tickets, filter_ctx = apply_filters(request, tickets, TICKET_FILTERS)

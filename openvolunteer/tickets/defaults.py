@@ -222,7 +222,7 @@ def install_default_ticket_templates(actions):
                 actions["initialize_assignment"],
                 actions["create_assignment"],
                 actions["create_assignment_partial"],
-                actions["close_ticket"],
+                actions["update_assignment_rejected"],
             ],
         )
 

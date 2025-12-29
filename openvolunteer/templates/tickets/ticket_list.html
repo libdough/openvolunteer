@@ -16,6 +16,7 @@
               <th>Priority</th>
               <th>Assigned</th>
               <th>Batch</th>
+              <th></th>
             </tr>
           </thead>
           <tbody>
@@ -46,7 +47,9 @@
                   </span>
                 </td>
                 <td>
-                  <span class="badge bg-light text-dark">P{{ ticket.priority }}</span>
+                  {% with priority=ticket.priority %}
+                    {% include "components/ticket_priority.html" %}
+                  {% endwith %}
                 </td>
                 <td>
                   {% if ticket.assigned_to %}
@@ -60,6 +63,16 @@
                     {{ ticket.batch.name }}
                   {% else %}
                     <span class="text-muted">—</span>
+                  {% endif %}
+                </td>
+                <td class="text-end text-nowrap">
+                  {% if ticket.claimable and not ticket.assigned_to %}
+                    <a href="{% url 'tickets:claim_ticket' ticket.id %}?next={{ request.get_full_path|urlencode }}"
+                       class="btn btn-sm btn-outline-primary ms-1">Claim</a>
+                  {% else %}
+                    <a class=" disabled btn btn-sm ms-1">
+                      <s>Claim</s>
+                    </a>
                   {% endif %}
                 </td>
               </tr>

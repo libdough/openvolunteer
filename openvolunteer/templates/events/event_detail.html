@@ -29,6 +29,16 @@
             <strong>Organization:</strong>
             {{ event.org.name }}
           </div>
+          {% if event.location_name %}
+            <div class="mb-3">
+              <strong>Location:</strong>
+              {{ event.location_name }}
+              {% if event.location_address %}
+                <br />
+                <div class="text-muted">{{ event.location_address }}</div>
+              {% endif %}
+            </div>
+          {% endif %}
           <div class="mb-3">
             <strong>Event Type:</strong>
             {{ event.get_event_type_display }}
@@ -70,43 +80,34 @@
              class="btn btn-sm btn-outline-secondary">Edit event</a>
         {% endif %}
       </div>
-      {% if event.location_name %}
-        <div class="card shadow-sm mb-4">
-          <div class="card-header">Location</div>
-          <div class="card-body small">
-            <strong>{{ event.location_name }}</strong>
-            {% if event.location_address %}<div class="text-muted">{{ event.location_address }}</div>{% endif %}
-          </div>
-        </div>
-      {% endif %}
       {% if event.description %}
         <div class="card shadow-sm mb-4">
           <div class="card-header">Description</div>
           <div class="card-body">{{ event.description|linebreaks }}</div>
         </div>
+        {# Ticket View #}
       {% endif %}
-      {# ========================================================= #}
-      {# EVENT-LEVEL ASSIGNMENTS (DEFAULT / HIDDEN SHIFT)          #}
-      {# ========================================================= #}
-      {% if not shifts %}
-        {% with shift=event.default_shift %}
-          <div class="card shadow-sm mb-4">
-            <div class="card-header d-flex justify-content-between align-items-center">
-              <span>Assignments</span>
-              <span class="badge bg-secondary">{{ shift.assigned_count }}</span>
-            </div>
-            <div class="card-body">
-              {% include "components/assignment_status_table.html" with shift=shift %}
-              {% if can_assign_people %}
-                <div class="text-end mt-3">
-                  <a href="{% url 'events:shift_assign_people' shift.id %}"
-                     class="btn btn-sm btn-outline-primary">Assign people</a>
-                </div>
-              {% endif %}
-            </div>
+      {% with tickets=tickets title="Open Tickets" ticket_count=ticket_count show_claim=True claim_querystring=claim_querystring empty_message="No open tickets for this Events." %}
+        {% include "components/ticket_list_card.html" %}
+      {% endwith %}
+      {# Event-level assignments #}
+      {% with shift=event.default_shift %}
+        <div class="card shadow-sm mb-4">
+          <div class="card-header d-flex justify-content-between align-items-center">
+            <span>Event Level-Assignments</span>
+            <span class="badge bg-secondary">{{ shift.assigned_count }}</span>
           </div>
-        {% endwith %}
-      {% endif %}
+          <div class="card-body">
+            {% include "components/assignment_status_table.html" with shift=shift %}
+            {% if can_assign_people %}
+              <div class="text-end mt-3">
+                <a href="{% url 'events:shift_assign_people' shift.id %}"
+                   class="btn btn-sm btn-outline-primary">Assign people</a>
+              </div>
+            {% endif %}
+          </div>
+        </div>
+      {% endwith %}
       {# ========================================================= #}
       {# SHIFTS                                                   #}
       {# ========================================================= #}

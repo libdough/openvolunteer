@@ -1,0 +1,60 @@
+<!-- {# OPTIONAL CONTEXT:
+   title: str (default "Tickets")
+   empty_message: str
+   show_claim: bool
+   show_view_button: bool (default True)
+   ticket_count: int (for "showing X of Y")
+#} -->
+<div class="card shadow-sm mb-4">
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <span>{{ title|default:"Tickets" }}</span>
+  </div>
+  <div class="card-body p-0">
+    {% if tickets %}
+      <table class="table table-sm table-hover mb-0">
+        <thead class="table-light">
+          <tr>
+            <th>Title</th>
+            <th>Assigned</th>
+            <th>Status</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for ticket in tickets %}
+            <tr class="{% if ticket.is_closed %}text-muted{% endif %}">
+              <td class="fw-medium">
+                <a href="{% url 'tickets:ticket_detail' ticket.id %}">{{ ticket.name }}</a>
+              </td>
+              <td class="small">
+                {% if ticket.assigned_to %}
+                  {{ ticket.assigned_to.name|default:ticket.assigned_to }}
+                {% else %}
+                  <span class="text-muted">Unassigned</span>
+                {% endif %}
+              </td>
+              <td>
+                <span class="badge {% if ticket.status == 'open' %}bg-secondary {% elif ticket.status == 'todo' %}bg-primary {% elif ticket.status == 'inprogress' %}bg-warning text-dark {% elif ticket.status == 'blocked' %}bg-danger {% elif ticket.status == 'completed' %}bg-success {% elif ticket.status == 'canceled' %}bg-light text-dark {% else %}bg-secondary{% endif %}">
+                  {{ ticket.get_status_display }}
+                </span>
+              </td>
+              <td class="text-end">
+                <a href="{% url 'tickets:ticket_detail' ticket.id %}"
+                   class="btn btn-sm btn-outline-secondary">View</a>
+                {% if show_claim and ticket.claimable and not ticket.assigned_to %}
+                  <a href="{% url 'tickets:claim_ticket' ticket.id %}"
+                     class="btn btn-sm btn-outline-primary ms-1">Claim</a>
+                {% endif %}
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% if ticket_count and ticket_count > tickets|length %}
+        <div class="p-2 text-muted small text-center">Showing first {{ tickets|length }} of {{ ticket_count }} tickets</div>
+      {% endif %}
+    {% else %}
+      <div class="p-4 text-muted text-center">{{ empty_message|default:"No tickets found." }}</div>
+    {% endif %}
+  </div>
+</div>

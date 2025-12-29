@@ -57,60 +57,9 @@
     <!-- RIGHT COLUMN -->
     <div class="col-lg-8">
       <!-- TICKETS -->
-      <div class="card shadow-sm mb-4">
-        <div class="card-header d-flex justify-content-between align-items-center">
-          <span>Tickets</span>
-          <!-- {% if can_manage_events %}
-            <a href="?org={{ org.id }}" class="btn btn-sm btn-outline-primary">+ Add Ticket</a>
-          {% endif %} -->
-        </div>
-        <div class="card-body p-0">
-          {% if tickets %}
-            <table class="table table-sm table-hover mb-0">
-              <thead class="table-light">
-                <tr>
-                  <th>Title</th>
-                  <th>Assigned</th>
-                  <th>Status</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody>
-                {% for ticket in tickets %}
-                  <tr class="{% if ticket.is_closed %}text-muted{% endif %}">
-                    <td class="fw-medium">
-                      <a href="{% url 'tickets:ticket_detail' ticket.id %}">{{ ticket.name }}</a>
-                    </td>
-                    <td class="small">
-                      {% if ticket.assigned_to %}
-                        {{ ticket.assigned_to.name|default:ticket.assigned_to }}
-                      {% else %}
-                        <span class="text-muted">Unassigned</span>
-                      {% endif %}
-                    </td>
-                    <td>
-                      <span class="badge {% if ticket.status == 'open' %}bg-secondary {% elif ticket.status == 'todo' %}bg-primary {% elif ticket.status == 'inprogress' %}bg-warning text-dark {% elif ticket.status == 'blocked' %}bg-danger {% elif ticket.status == 'completed' %}bg-success {% elif ticket.status == 'canceled' %}bg-light text-dark {% else %}bg-secondary{% endif %} ">
-                        {{ ticket.get_status_display }}
-                      </span>
-                    </td>
-                    <td class="text-end">
-                      <a href="{% url 'tickets:ticket_detail' ticket.id %}"
-                         class="btn btn-sm btn-outline-secondary">View</a>
-                    </td>
-                  </tr>
-                {% endfor %}
-              </tbody>
-            </table>
-            {% if org.ticket_count > tickets|length %}
-              <div class="p-2 text-muted small text-center">
-                Showing first {{ tickets|length }} of {{ org.ticket_count }} tickets
-              </div>
-            {% endif %}
-          {% else %}
-            <div class="p-4 text-muted text-center">No tickets for this organization yet.</div>
-          {% endif %}
-        </div>
-      </div>
+      {% with tickets=tickets title="Open Tickets" ticket_count=ticket_count show_claim=True claim_querystring=claim_querystring empty_message="No open tickets for this organization." %}
+        {% include "components/ticket_list_card.html" %}
+      {% endwith %}
       <!-- EVENTS -->
       <div class="card shadow-sm mb-4">
         <div class="card-header d-flex justify-content-between align-items-center">

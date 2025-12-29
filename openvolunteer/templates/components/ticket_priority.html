@@ -1,0 +1,15 @@
+{% if priority == 0 %}
+  <span class="badge bg-danger">P0</span>
+{% elif priority == 1 %}
+  <span class="badge bg-warning text-dark">P1</span>
+{% elif priority == 2 %}
+  <span class="badge bg-info text-dark">P2</span>
+{% elif priority == 3 %}
+  <span class="badge bg-secondary">P3</span>
+{% elif priority == 4 %}
+  <span class="badge bg-light text-dark">P4</span>
+{% elif priority >= 5 %}
+  <span class="badge bg-light text-muted">P5</span>
+{% else %}
+  <span class="badge bg-light text-dark">P{{ ticket.priority }}</span>
+{% endif %}
