@@ -7,6 +7,7 @@ from django.db.models import IntegerField
 from django.db.models import Value
 from django.db.models import When
 from django.http import HttpResponseForbidden
+from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
 from django.shortcuts import redirect
 from django.shortcuts import render
@@ -28,6 +29,7 @@ from .filters import TICKET_FILTERS
 from .forms import TicketUpdateForm
 from .models import Ticket
 from .models import TicketAuditEvent
+from .models import TicketAuditLog
 from .models import TicketStatus
 from .services import generate_tickets_for_event
 
@@ -76,12 +78,22 @@ def ticket_detail(request, ticket_id):
 
     form = TicketUpdateForm(instance=ticket)
 
+    audit_logs = (
+        TicketAuditLog.objects.filter(ticket=ticket)
+        .select_related("actor")
+        .order_by("-created_at")
+    )
+    pagination = paginate(request, audit_logs, per_page=10)
+
     return render(
         request,
         "tickets/ticket_detail.html",
         {
             "ticket": ticket,
+            "audit_logs": pagination["page_obj"],
+            **pagination,
             "form": form,
+            "status_buttons": TicketStatus.choices,
         },
     )
 
@@ -269,5 +281,6 @@ def update_ticket(request, ticket_id):
         )
 
         messages.error(request, f"Please correct the errors: {form.errors}")
+        return JsonResponse({"err": form.errors})
 
-    return redirect("tickets:ticket_detail", ticket_id=ticket.id)
+    return JsonResponse({"ok": True})

@@ -21,6 +21,43 @@
       {% endif %}
     </div>
   </div>
+  <!-- Toolbar -->
+  <div class="card mb-3">
+    <div class="card-body py-2">
+      <form id="ticket-update-form"
+            class="d-flex flex-wrap align-items-center gap-3"
+            onsubmit="return false;">
+        {% csrf_token %}
+        <!-- STATUS BUTTONS -->
+        <div class="btn-group btn-group-sm"
+             role="group"
+             aria-label="Ticket status">
+          {% for value,label in status_buttons %}
+            <button type="button"
+                    class="btn {% if value == form.status.value %}btn-primary disabled{% else %}btn-outline-primary{% endif %}"
+                    {% if value == form.status.value %}disabled{% endif %}
+                    onclick="setStatus('{{ value }}', this)">{{ label }}</button>
+          {% endfor %}
+        </div>
+        <!-- HIDDEN STATUS FIELD (real form field) -->
+        <input type="hidden"
+               name="status"
+               id="id_status"
+               value="{{ form.status.value }}" />
+        <!-- PRIORITY -->
+        <div class="d-flex align-items-center gap-1">
+          <span class="small text-muted">Priority</span>
+          {{ form.priority }}
+        </div>
+        <!-- ASSIGNED -->
+        <div class="d-flex align-items-center gap-1">
+          <span class="small text-muted">Assigned</span>
+          {{ form.assigned_to }}
+        </div>
+        {{ form.errors }}
+      </form>
+    </div>
+  </div>
   <div class="row">
     <!-- Main content -->
     <div class="col-md-8">
@@ -32,29 +69,72 @@
         </div>
       </div>
       <!-- Activity -->
-      <div class="card mt-4">
+      <div class="card mt-4 mb-3">
         <div class="card-header">
           <strong>Activity</strong>
         </div>
-        <div class="card-body p-0">
-          {% if ticket.audit_logs.exists %}
-            <ul class="list-group list-group-flush">
-              {% for log in ticket.audit_logs.all %}
-                <li class="list-group-item small">
-                  <div class="d-flex justify-content-between">
-                    <span class="{% if not log.success %}text-danger{% endif %}">{{ log.message }}</span>
-                    <span class="text-muted">{{ log.created_at|date:"M d, H:i" }}</span>
-                  </div>
-                  <div class="text-muted">
-                    {% if log.actor %}
-                      {{ log.actor }}
-                    {% else %}
-                      System
-                    {% endif %}
-                  </div>
-                </li>
-              {% endfor %}
-            </ul>
+        <div class="card-body p-0 mb-1">
+          {% if audit_logs %}
+            <table class="table mb-0">
+              <tbody>
+                {% for log in audit_logs %}
+                  <tr class="small">
+                    <td>
+                      <!-- Header -->
+                      <div class="d-flex justify-content-between">
+                        <span class="{% if not log.success %}text-danger{% endif %}">{{ log.message }}</span>
+                        <span class="text-muted">{{ log.created_at|date:"M d, H:i" }}</span>
+                      </div>
+                      <!-- Actor -->
+                      <div class="text-muted">
+                        {% if log.actor %}
+                          {{ log.actor }}
+                        {% else %}
+                          System
+                        {% endif %}
+                      </div>
+                      <!-- Changed fields -->
+                      {% if log.metadata.changed_fields %}
+                        <div class="ps-2 border-start">
+                          <ul class="list-unstyled mb-0">
+                            {% for field, value in log.metadata.changed_fields.items %}
+                              <li class="small">
+                                <strong>{{ field|capfirst }}</strong> →
+                                <span class="fw-medium">
+                                  {% if field == "status" %}
+                                    {{ ticket.get_status_display }}
+                                  {% elif field == "priority" %}
+                                    P{{ value }}
+                                  {% elif field == "assigned_to" %}
+                                    {% if value %}
+                                      {{ value }}
+                                    {% else %}
+                                      Unassigned
+                                    {% endif %}
+                                  {% else %}
+                                    {{ value }}
+                                  {% endif %}
+                                </span>
+                              </li>
+                            {% endfor %}
+                          </ul>
+                        </div>
+                      {% endif %}
+                      <!-- Validation errors -->
+                      {% if not log.success and log.metadata.errors %}
+                        <div class="text-danger small">
+                          <strong>Errors:</strong>
+                          <ul class="mb-0">
+                            {% for field, errors in log.metadata.errors.items %}<li>{{ field }}: {{ errors|join:", " }}</li>{% endfor %}
+                          </ul>
+                        </div>
+                      {% endif %}
+                    </td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+            {% include "components/pagination.html" %}
           {% else %}
             <div class="p-3 text-muted text-center">No activity yet.</div>
           {% endif %}
@@ -111,17 +191,71 @@
       {% with ticket=ticket actions=ticket.manual_actions %}
         {% include "components/ticket_actions.html" %}
       {% endwith %}
-      <!-- Update form -->
-      <div class="card">
-        <div class="card-body">
-          <h6>Update Ticket</h6>
-          <form method="post" action="{% url 'tickets:update_ticket' ticket.id %}">
-            {% csrf_token %}
-            {{ form.as_p }}
-            <button type="submit" class="btn btn-sm btn-primary">Save changes</button>
-          </form>
-        </div>
-      </div>
     </div>
   </div>
+  <script>
+    const form = document.getElementById("ticket-update-form");
+    const updateUrl = "{% url 'tickets:update_ticket' ticket.id %}";
+    const csrfToken = "{{ csrf_token }}";
+
+    function submitForm(triggerEl = null) {
+      // ⬅️ Build FormData FIRST
+      const formData = new FormData(form);
+
+      if (triggerEl) triggerEl.disabled = true;
+
+      fetch(updateUrl, {
+          method: "POST",
+          headers: {
+            "X-CSRFToken": csrfToken,
+          },
+          body: formData,
+        })
+        .then(async (resp) => {
+          const data = await resp.json();
+          if (!resp.ok) throw data;
+          return data;
+        })
+        .then(() => {
+          window.location.reload();
+        })
+        .catch((err) => {
+          if (triggerEl) triggerEl.disabled = false;
+
+          if (err.err) {
+            alert(
+              Object.values(err.err)
+              .flat()
+              .join("\n")
+            );
+          } else {
+            console.error(err);
+            alert("Update failed.");
+          }
+        });
+    }
+
+    function setStatus(value, btn) {
+      document.getElementById("id_status").value = value;
+
+      document
+        .querySelectorAll('[aria-label="Ticket status"] button')
+        .forEach((b) => {
+          b.classList.remove("btn-primary");
+          b.classList.add("btn-outline-primary");
+          b.disabled = false;
+        });
+
+      btn.classList.remove("btn-outline-primary");
+      btn.classList.add("btn-primary");
+      btn.disabled = true;
+
+      submitForm(btn);
+    }
+
+    // Auto-submit dropdowns
+    form.querySelectorAll("select").forEach((el) => {
+      el.addEventListener("change", () => submitForm(el));
+    });
+  </script>
 {% endblock content %}

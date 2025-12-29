@@ -5,6 +5,16 @@ from .models import TicketStatus
 
 
 class TicketUpdateForm(forms.ModelForm):
+    priority = forms.TypedChoiceField(
+        choices=Ticket.Priority.choices,
+        coerce=int,
+        widget=forms.Select(
+            attrs={
+                "class": "form-select form-select-sm w-auto",
+            },
+        ),
+    )
+
     class Meta:
         model = Ticket
         fields = [
@@ -22,7 +32,7 @@ class TicketUpdateForm(forms.ModelForm):
         if status == TicketStatus.OPEN and assigned_to:
             self.add_error(
                 "assigned_to",
-                "Open tickets cannot be assigned.",
+                "Open tickets cannot be assigned. Please unclaim first.",
             )
 
         if (

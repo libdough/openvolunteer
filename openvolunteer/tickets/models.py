@@ -164,7 +164,18 @@ class Ticket(models.Model):
         default=TicketStatus.OPEN,
     )
 
-    priority = models.PositiveSmallIntegerField(default=3)
+    class Priority(models.IntegerChoices):
+        P0 = 0, "P0 - Emergency (Do Now)"
+        P1 = 1, "P1 - Very High"
+        P2 = 2, "P2 - High"
+        P3 = 3, "P3 - Normal"
+        P4 = 4, "P4 - Low"
+        P5 = 5, "P5 - Very Low"
+
+    priority = models.PositiveSmallIntegerField(
+        choices=Priority.choices,
+        default=3,
+    )
 
     assigned_to = models.ForeignKey(
         settings.AUTH_USER_MODEL,
