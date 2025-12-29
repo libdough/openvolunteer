@@ -69,7 +69,9 @@
                   {% endif %}
                 </td>
                 <td class="text-end text-nowrap">
-                  {% if can_claim %}
+                  {% if ticket.assigned_to == request.user %}
+                    <a disabled class="disabled btn btn-sm ms-1">Claimed</a>
+                  {% elif can_claim %}
                     <a href="{% url 'tickets:claim_ticket' ticket.id %}?next={{ request.get_full_path|urlencode }}"
                        class="btn btn-sm btn-outline-primary ms-1">Claim</a>
                   {% else %}

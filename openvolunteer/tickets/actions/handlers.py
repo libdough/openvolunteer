@@ -1,8 +1,7 @@
 from openvolunteer.events.models import ShiftAssignment
 from openvolunteer.events.models import ShiftAssignmentStatus
-from openvolunteer.orgs.models import Organization
-from openvolunteer.people.models import PersonTag
 from openvolunteer.people.models import PersonTagging
+from openvolunteer.people.services import generate_tag_org_prefered
 
 from .models import TicketActionType
 
@@ -51,13 +50,7 @@ def upsert_tag(*, ticket, action, user):
     if not ticket.person:
         return
 
-    org_slug = action.config.get("org_slug", None)
-    org = Organization.objects.get(slug=org_slug)
-
-    tag, _ = PersonTag.objects.get_or_create(
-        org=org,
-        name=tag_name,
-    )
+    tag = generate_tag_org_prefered(tag_name, ticket.org)
 
     PersonTagging.objects.get_or_create(
         person=ticket.person,
@@ -73,18 +66,12 @@ def remove_tag(*, ticket, action, user):
     if not ticket.person:
         return
 
-    org_slug = action.config.get("org_slug", None)
-    org = Organization.objects.get(slug=org_slug)
+    tag = generate_tag_org_prefered(tag_name, ticket.org)
 
-    tag = PersonTag.objects.get(
-        org=org,
-        name=tag_name,
-    )
-
-    PersonTagging.objects.delete(
+    PersonTagging.objects.filter(
         person=ticket.person,
         tag=tag,
-    )
+    ).delete()
 
 
 def noop_action(*, ticket, action, user):

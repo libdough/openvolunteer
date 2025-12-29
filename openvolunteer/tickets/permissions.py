@@ -50,14 +50,16 @@ def user_can_claim_ticket(user, ticket, event=None):
     if event:
         if event.owned_by == user:
             return True
-        if event.org and not user_can_participate(user, event.org):
-            return False
 
-    if not ticket.claimable:
-        # Only certain people can claim unclaimable tickets
-        if event and user_can_manage_members(user, event.org):
-            return True
-    return False
+    if ticket.org:
+        if not user_can_participate(user, ticket.org):
+            return False
+        if not ticket.claimable:
+            # Only certain people can claim unclaimable tickets
+            if user_can_manage_members(user, ticket.org):
+                return True
+    # Default to claimable tickets flag
+    return ticket.claimable
 
 
 def user_can_unclaim_ticket(user, ticket, event=None):

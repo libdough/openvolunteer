@@ -68,7 +68,7 @@ def install_default_ticket_actions():
     )
 
     mark_interest_canvassing, _ = TicketActionTemplate.objects.get_or_create(
-        slug="mark_interest_phone_banking",
+        slug="mark_interest_canvassing",
         action_type=TicketActionType.UPSERT_TAG,
         label="Interest Phone Banking",
         defaults={
@@ -77,6 +77,20 @@ def install_default_ticket_actions():
             "button_color": TicketActionButtonColor.SECONDARY,
             "config": {
                 "tag": "canvasser",
+            },
+        },
+    )
+
+    mark_do_not_contact, _ = TicketActionTemplate.objects.get_or_create(
+        slug="mark_do_not_contact",
+        action_type=TicketActionType.UPSERT_TAG,
+        label="Mark Do Not Contact",
+        defaults={
+            "run_when": TicketActionRunWhen.MANUAL,
+            "description": ("Marks this person as someone not to contact"),
+            "button_color": TicketActionButtonColor.DANGER,
+            "config": {
+                "tag": "No Contact",
             },
         },
     )
@@ -200,6 +214,7 @@ def install_default_ticket_actions():
         "mark_introduced": mark_introduced,
         "mark_interest_phone_banking": mark_interest_phone_banking,
         "mark_interest_canvassing": mark_interest_canvassing,
+        "mark_do_not_contact": mark_do_not_contact,
         "complete_ticket": complete_ticket,
         "block_ticket": block_ticket,
         "close_ticket": close_ticket,
@@ -229,16 +244,26 @@ def install_default_ticket_templates(actions):
                 "\n"
                 "We noticed you joined the discord.\n"
                 "\n"
-                "We're happy you are here and wanted to know if you were "
-                "interested in volunteering?\n"
+                "We're happy you are here! We wanted to know if you were interested "
+                "getting more involved? We have a few activities "
+                "that you might like:\n\n"
+                "1. Phone Banking\n"
+                "2. Canvassing\n"
                 "\n"
-                "Please let us know!\n"
+                "Please let us know if you are interested!\n"
                 "```\n"
                 "\n"
-                "4. Await their response\n"
+                "4. Mark them as introduced using the action on this ticket.\n"
                 "\n"
-                "5. If they confirm their interest, click the `confirm` action button. "
-                "If they are not interested, click the `reject` action button."
+                "5. Await their response. Feel free to claim other tickets while "
+                "you wait.\n"
+                "\n"
+                "6. If they confirm their interest in the activities click the "
+                " corresponding action button. \n"
+                "If they are not interested, click the `close ticket` action button."
+                "\n"
+                "7. If they are hostile or expressly do not wish to be contacted, "
+                "click the `mark do not contact` and then close the ticket."
             ),
             "default_priority": 3,
             "claimable": True,
@@ -251,6 +276,7 @@ def install_default_ticket_templates(actions):
                 actions["mark_interest_phone_banking"],
                 actions["mark_interest_canvassing"],
                 actions["close_ticket"],
+                actions["mark_do_not_contact"],
             ],
         )
 
@@ -385,7 +411,7 @@ def install_default_tasks():
     create_intro_tix, _ = PeriodicTask.objects.get_or_create(
         name="Create intro tickets for unintroduced people",
         defaults={
-            "task": "tickets.tasks.create_tickets_for_people_with_tag",
+            "task": "openvolunteer.tickets.tasks.create_tickets_for_people_with_tag",
             "interval": every_fifteen_minutes,
             "kwargs": json.dumps(
                 {
@@ -413,7 +439,7 @@ def install_default_tasks():
     cancel_stale_tix = PeriodicTask.objects.get_or_create(
         name="Cancel stale tickets",
         defaults={
-            "task": "tickets.tasks.cancel_stale_tickets",
+            "task": "openvolunteer.tickets.tasks.cancel_stale_tickets",
             "crontab": midnight,
             "kwargs": json.dumps(
                 {
@@ -430,7 +456,7 @@ def install_default_tasks():
     cancel_tix_canceled_events = PeriodicTask.objects.get_or_create(
         name="Cancel tickets for canceled events",
         defaults={
-            "task": "tickets.tasks.cancel_tickets_for_canceled_events",
+            "task": "openvolunteer.tickets.tasks.cancel_tickets_for_canceled_events",
             "crontab": midnight,
             "kwargs": json.dumps(
                 {
@@ -450,7 +476,7 @@ def install_default_tasks():
     delete_completed_tickets = PeriodicTask.objects.get_or_create(
         name="Delete completed tickets after 30 days",
         defaults={
-            "task": "tickets.tasks.delete_tickets",
+            "task": "openvolunteer.tickets.tasks.delete_tickets",
             "crontab": midnight,
             "kwargs": json.dumps(
                 {
@@ -462,9 +488,19 @@ def install_default_tasks():
         },
     )
 
+    delete_ticket_batches = PeriodicTask.objects.get_or_create(
+        name="Delete any dangling ticket batches",
+        defaults={
+            "task": "openvolunteer.tickets.tasks.delete_ticket_batches",
+            "crontab": midnight,
+            "enabled": True,
+        },
+    )
+
     return {
         "delete_completed_tickets": delete_completed_tickets,
         "create_intro_tix": create_intro_tix,
         "cancel_stale_tix": cancel_stale_tix,
         "cancel_tix_canceled_events": cancel_tix_canceled_events,
+        "delete_ticket_batches": delete_ticket_batches,
     }

@@ -1,7 +1,10 @@
+import os
 from datetime import timedelta
 
 from celery import shared_task
 from django.db import transaction
+from django.db.models import Count
+from django.db.models import Q
 from django.utils import timezone
 
 from openvolunteer.events.models import EventStatus
@@ -9,6 +12,7 @@ from openvolunteer.orgs.models import Organization
 from openvolunteer.people.models import Person
 
 from .models import Ticket
+from .models import TicketBatch
 from .models import TicketStatus
 from .models import TicketTemplate
 from .services import create_ticket
@@ -38,10 +42,34 @@ def delete_tickets(
 
     qs = Ticket.objects.filter(
         status__in=[statuses],
-        updated_at__lt=cutoff,
+        modified_at__lt=cutoff,
     )
 
     deleted_count, _ = qs.delete()
+    return deleted_count
+
+
+@shared_task(bind=True)
+def delete_ticket_batches(self) -> int:
+    """
+    Delete ticket batches that:
+    - Have zero tickets, OR
+    - All associated tickets are completed
+    """
+
+    batches_qs = TicketBatch.objects.annotate(
+        total_tickets=Count("tickets"),
+        incomplete_tickets=Count(
+            "tickets",
+            filter=~Q(
+                tickets__status__in=[TicketStatus.COMPLETED, TicketStatus.CANCELED],
+            ),
+        ),
+    ).filter(
+        Q(total_tickets=0) | Q(incomplete_tickets=0),
+    )
+
+    deleted_count, _ = batches_qs.delete()
     return deleted_count
 
 
@@ -67,12 +95,11 @@ def cancel_stale_tickets(
 
     qs = Ticket.objects.filter(
         status__in=statuses,
-        updated_at__lt=cutoff,
+        modified_at__lt=cutoff,
     )
 
     return qs.update(
         status=new_status,
-        updated_at=timezone.now(),
     )
 
 
@@ -90,13 +117,12 @@ def cancel_tickets_for_canceled_events(
     cutoff = timezone.now() - timedelta(days=days_recent)
 
     qs = Ticket.objects.filter(
-        updated_at__lt=cutoff,
-        event__status=EventStatus.CANCELED,
-    ).exclude(status=new_status)
+        modified_at__lt=cutoff,
+        event__event_status=EventStatus.CANCELED,
+    )
 
     return qs.update(
         status=new_status,
-        updated_at=timezone.now(),
     )
 
 
@@ -107,9 +133,7 @@ def create_tickets_for_people_with_tag(  # noqa: PLR0913
     template_name,
     tag_name: str,
     org_slugs: list[str] | None = None,
-    event_id=None,
-    batch_id=None,
-    shift_id=None,
+    batch_prefix: str | None = None,
     limit: int | None = None,
 ) -> int:
     """
@@ -129,10 +153,24 @@ def create_tickets_for_people_with_tag(  # noqa: PLR0913
 
     for org in orgs:
         # People with this tag in this org OR global tag
-        people_qs = Person.objects.filter(
-            taggings__tag__name=tag_name,
-            taggings__tag__org__in=[org, None],
-        ).distinct()
+        people_qs = (
+            Person.objects.filter(
+                # Person must belong to the org
+                org_links__org=org,
+                org_links__is_active=True,
+            )
+            .filter(
+                Q(
+                    taggings__tag__name=tag_name,
+                    taggings__tag__org=org,
+                )
+                | Q(
+                    taggings__tag__name=tag_name,
+                    taggings__tag__org__isnull=True,
+                ),
+            )
+            .distinct()
+        )
 
         template = get_ticket_template_for_org(template_name, org)
 
@@ -143,6 +181,17 @@ def create_tickets_for_people_with_tag(  # noqa: PLR0913
         if limit:
             people_qs = people_qs[:limit]
 
+        name = (
+            f"{batch_prefix if batch_prefix else template_name}-{os.urandom(2).hex()}"
+        )
+        reason = f"System generated batch for {template_name} on {timezone.now()}"
+        batch = TicketBatch.objects.create(
+            org=org,
+            name=name,
+            reason=reason,
+            created_by=None,  # System
+        )
+
         for person in people_qs:
             with transaction.atomic():
                 create_ticket(
@@ -150,10 +199,12 @@ def create_tickets_for_people_with_tag(  # noqa: PLR0913
                     org=org,
                     created_by=None,  # System
                     person=person,
-                    event=event_id,
-                    batch=batch_id,
-                    shift=shift_id,
+                    batch=batch,
                 )
                 total_created += 1
+
+        # Delete batch if no tickets created
+        if not batch.tickets.exists():
+            batch.delete()
 
     return total_created

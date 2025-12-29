@@ -32,36 +32,34 @@ def mark_events_as_finished(self, buffer_minutes: int = 0):
 
 
 @shared_task()
-def reconcile_event_default_shifts():
-    """
-    Ensures every event has exactly one default shift.
-    Keeps default shift times aligned with the event
-    """
+def clean_event_objects():
+    updated_count = 0
+
+    # Ensures every event has exactly one default shift.
+    # Keeps default shift times aligned with the event
     for event in Event.objects.all():
         shift = event.default_shift()
         changed = False
 
-        if shift.starts_at != event.starts_at:
+        if shift.starts_at < event.starts_at:
             shift.starts_at = event.starts_at
             changed = True
 
-        if shift.ends_at != event.ends_at:
+        if shift.ends_at > event.ends_at:
             shift.ends_at = event.ends_at
             changed = True
 
         if changed:
             shift.save()
+            updated_count += 1
 
-
-@shared_task()
-def cleanup_orphaned_shift_assignments():
-    """
-    Deletes inactive shift assignments from the DB
-    """
-
-    return ShiftAssignment.objects.filter(
+    # Deletes inactive shift assignments from the DB
+    if ShiftAssignment.objects.filter(
         person__org_links__is_active=False,
-    ).delete()
+    ).delete():
+        updated_count += 1
+
+    return updated_count
 
 
 @shared_task()

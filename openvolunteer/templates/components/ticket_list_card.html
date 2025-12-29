@@ -17,6 +17,7 @@
         <thead class="table-light">
           <tr>
             <th>Title</th>
+            <th></th>
             <th>Assigned</th>
             <th>Status</th>
             <th></th>
@@ -28,6 +29,11 @@
             <tr class="{% if ticket.is_closed %}text-muted{% endif %}">
               <td class="fw-medium">
                 <a href="{% url 'tickets:ticket_detail' ticket.id %}">{{ ticket.name }}</a>
+              </td>
+              <td class="small">
+                {% with priority=ticket.priority %}
+                  {% include "components/ticket_priority.html" %}
+                {% endwith %}
               </td>
               <td class="small">
                 {% if ticket.assigned_to %}
@@ -42,10 +48,9 @@
                 </span>
               </td>
               <td class="text-end">
-                <a href="{% url 'tickets:ticket_detail' ticket.id %}"
-                   class="btn btn-sm btn-outline-secondary">View</a>
                 {% if show_claim %}
-                  {% if can_claim %}
+                  {% if ticket.assigned_to == request.user %}
+                  {% elif can_claim %}
                     <a href="{% url 'tickets:claim_ticket' ticket.id %}"
                        class="btn btn-sm btn-outline-primary ms-1">Claim</a>
                   {% else %}

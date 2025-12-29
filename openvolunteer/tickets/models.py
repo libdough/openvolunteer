@@ -90,6 +90,15 @@ class TicketBatch(models.Model):
         help_text="Shift this ticket applies to; defaults to event default shift",
     )
 
+    template = models.ForeignKey(
+        TicketTemplate,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="ticket_batches",
+        help_text="Template this batch was created from",
+    )
+
     name = models.CharField(max_length=200)
     reason = models.TextField(blank=True)
 
@@ -150,6 +159,15 @@ class Ticket(models.Model):
         blank=True,
         on_delete=models.SET_NULL,
         related_name="tickets",
+    )
+
+    template = models.ForeignKey(
+        TicketTemplate,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="tickets",
+        help_text="Template ticket was created from",
     )
 
     name = models.CharField(max_length=200)

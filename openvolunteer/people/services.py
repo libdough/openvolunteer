@@ -2,6 +2,11 @@ import csv
 import io
 
 from django.db import transaction
+from django.db.models import Case
+from django.db.models import IntegerField
+from django.db.models import Q
+from django.db.models import Value
+from django.db.models import When
 
 from openvolunteer.orgs.models import Organization
 from openvolunteer.orgs.permissions import user_can_manage_people
@@ -104,3 +109,24 @@ def handle_person_csv(user, uploaded_file):
         created += 1
 
     return created, skipped
+
+
+# Gets/creates the tag, with preference to the org first
+def generate_tag_org_prefered(tag_name, org=None):
+    if org is None:
+        return PersonTag.objects.get_or_create(Q(name=tag_name) & Q(org__isnull=True))
+    tag = (
+        PersonTag.objects.filter(Q(name=tag_name) & (Q(org=org) | Q(org__isnull=True)))
+        .order_by(
+            Case(
+                When(org=org, then=Value(0)),
+                When(org__isnull=True, then=Value(1)),
+                output_field=IntegerField(),
+            ),
+        )
+        .first()
+    )
+    if tag:
+        return tag
+
+    return PersonTag.objects.create(name=tag_name, org=org)

@@ -84,6 +84,8 @@ def ticket_detail(request, ticket_id):
     )
     if not user_can_view_ticket(request.user, ticket):
         msg = "User can not view this ticket"
+        if user_can_claim_ticket(request.user, ticket, event=ticket.event):
+            msg = "User must first claim ticket to view it"
         raise PermissionDenied(msg)
 
     form = TicketUpdateForm(instance=ticket)

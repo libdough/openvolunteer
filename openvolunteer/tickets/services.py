@@ -1,8 +1,10 @@
+import os
 from zoneinfo import ZoneInfo
 
 from django.db import transaction
 from django.db.models import Case
 from django.db.models import IntegerField
+from django.db.models import Q
 from django.db.models import QuerySet
 from django.db.models import Value
 from django.db.models import When
@@ -161,7 +163,7 @@ def generate_tickets_for_event(
         org=event.org,
         event=event,
         shift=shift,
-        name=batch_name or f"Generated tickets for {event.title}",
+        name=batch_name or f"event-{event.title}-{os.urandom(2).hex()}",
         reason=reason,
         created_by=created_by,
     )
@@ -217,6 +219,7 @@ def create_ticket(
         org=org,
         person=person if person else None,
         event=event if event else None,
+        shift=shift if shift else None,
     ).exists():
         return None
 
@@ -275,6 +278,7 @@ def create_ticket(
         person=person,
         batch=batch,
         shift=shift,
+        template=template,
         reporter=created_by,
         priority=template.default_priority,
         claimable=template.claimable,
@@ -293,7 +297,7 @@ def create_ticket(
         actor=created_by,
         metadata={
             "template": template.name,
-            "batch": str(batch.id),
+            "batch": str(batch.id) if batch else None,
         },
     )
 
@@ -302,7 +306,7 @@ def create_ticket(
 
 def get_ticket_template_for_org(name, org):
     return (
-        TicketTemplate.objects.filter(name=name, org__in=[org, None])
+        TicketTemplate.objects.filter(Q(name=name) & (Q(org=org) | Q(org__isnull=True)))
         .order_by(
             Case(
                 When(org=org, then=Value(0)),
