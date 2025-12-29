@@ -31,11 +31,12 @@ def upsert_shift_assignment(*, ticket, action, user):
     ShiftAssignment.objects.update_or_create(
         shift=shift,
         person=ticket.person,
-        status=action.config.get(
-            "status",
-            ShiftAssignmentStatus.PENDING,
-        ),
-        assigned_by=user,
+        defaults={
+            "status": action.config.get(
+                "status",
+                ShiftAssignmentStatus.PENDING,
+            ),
+        },
     )
 
 

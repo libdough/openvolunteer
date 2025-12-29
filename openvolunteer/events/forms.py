@@ -1,7 +1,7 @@
 from django import forms
 
 from openvolunteer.orgs.models import Organization
-from openvolunteer.tickets.models import TicketTemplate
+from openvolunteer.people.models import Person
 
 from .models import Event
 from .models import Shift
@@ -97,12 +97,17 @@ class ShiftAssignmentForm(forms.ModelForm):
         fields = []
 
 
-class GenerateTicketsForm(forms.Form):
-    ticket_templates = forms.ModelMultipleChoiceField(
-        queryset=TicketTemplate.objects.none(),
-        required=True,
-        widget=forms.CheckboxSelectMultiple,
-        help_text="Select which ticket templates to generate.",
+class GenerateTicketsForTemplateForm(forms.Form):
+    people = forms.ModelMultipleChoiceField(
+        queryset=Person.objects.none(),
+        required=False,
+        help_text="Leave empty to generate for all eligible people.",
+    )
+
+    shift = forms.ModelChoiceField(
+        queryset=Shift.objects.none(),
+        required=False,
+        help_text="Optional: restrict tickets to a specific shift.",
     )
 
     batch_name = forms.CharField(
@@ -111,14 +116,14 @@ class GenerateTicketsForm(forms.Form):
         help_text="Optional override for the ticket batch name.",
     )
 
-    def __init__(self, *, event_templates, **kwargs):
+    def __init__(self, *, event, people_queryset, shifts, **kwargs):
         super().__init__(**kwargs)
 
-        self.fields["ticket_templates"].queryset = (
-            TicketTemplate.objects.filter(
-                event_templates__in=event_templates,
-                is_active=True,
-            )
-            .distinct()
-            .order_by("name")
-        )
+        self.fields["people"].queryset = people_queryset
+
+        # Only show shift selector if non-default shifts exist
+        non_default = shifts.exclude(is_default=True)
+        if non_default.exists():
+            self.fields["shift"].queryset = non_default
+        else:
+            self.fields.pop("shift")

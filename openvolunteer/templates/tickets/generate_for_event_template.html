@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+
+{% load person_selector %}
+
+{% block title %}
+  Generate tickets for {{ ticket_template.name }}
+{% endblock title %}
+{% block content %}
+  <a href="{% url 'events:event_detail' event.id %}"
+     class="text-muted mb-3 d-inline-block">← Back to event</a>
+  {# -------------------- #}
+  {# EventTemplate context #}
+  {# -------------------- #}
+  <div class="d-flex justify-content-between align-items-start mb-3">
+    <div>
+      <h1 class="mb-1">Generate Tickets</h1>
+      <div class="text-muted">
+        Template: <strong>{{ ticket_template.name }}</strong>
+      </div>
+    </div>
+  </div>
+  {% if ticket_template %}
+    <div class="card shadow-sm mb-4">
+      <div class="card-header">{{ ticket_template.name }}</div>
+      {% if ticket_template.description_template %}
+        <div class="description">
+          {% load markdown_extras %}
+
+          {{ ticket_template.description_template|render_markdown|safe }}
+        </div>
+      {% endif %}
+    </div>
+  {% endif %}
+  <form method="post">
+    {% csrf_token %}
+    <div class="row">
+      <div class="col-md-8">
+        <div class="card shadow-sm mb-4">
+          <div class="card-header">Select People</div>
+          <div class="card-body">
+            {% with selected_people=form.people.value event_id=event.id org_id=.org.id placeholder="Search people to generate tickets for…" allow_add_all=True %}
+              {% person_selector %}
+            {% endwith %}
+            <div class="form-text mt-2">
+              Leave empty to generate tickets for <strong>all eligible people</strong>.
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="card shadow-sm mb-4">
+          <div class="card-header">Options</div>
+          <div class="card-body small">
+            {% if form.shift %}
+              <div class="mb-3">
+                {{ form.shift.label_tag }}
+                {{ form.shift }}
+                <div class="form-text">{{ form.shift.help_text }}</div>
+              </div>
+            {% endif %}
+            <div class="mb-3">
+              {{ form.batch_name.label_tag }}
+              {{ form.batch_name }}
+              <div class="form-text">{{ form.batch_name.help_text }}</div>
+            </div>
+          </div>
+        </div>
+        <div class="card shadow-sm">
+          <div class="card-body d-grid gap-2">
+            <button type="submit" class="btn btn-primary">Generate tickets</button>
+            <a href="{% url 'events:event_detail' event.id %}"
+               class="btn btn-outline-secondary">Cancel</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+{% endblock content %}

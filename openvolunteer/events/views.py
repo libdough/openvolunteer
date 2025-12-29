@@ -104,6 +104,10 @@ def event_detail(request, event_id):
 
     pagination = paginate(request, shifts_qs, per_page=10)
 
+    ticket_templates = event.template.ticket_templates.filter(is_active=True).order_by(
+        "name",
+    )
+
     return render(
         request,
         "events/event_detail.html",
@@ -114,6 +118,7 @@ def event_detail(request, event_id):
             "assigned_people": assigned_qs,
             "available_people": available_people,
             "shifts": pagination["page_obj"],
+            "ticket_templates": ticket_templates,
             **pagination,
         },
     )

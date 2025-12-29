@@ -6,7 +6,7 @@ from django.shortcuts import render
 
 from openvolunteer.tickets.services import generate_tickets_for_event
 
-from .forms import GenerateTicketsForm
+from .forms import GenerateTicketsForTemplateForm
 from .models import Event
 from .models import EventStatus
 from .models import EventTemplate
@@ -222,7 +222,7 @@ class EventAdmin(admin.ModelAdmin):
                 )
                 return None
 
-            form = GenerateTicketsForm(
+            form = GenerateTicketsForTemplateForm(
                 event_templates=event_templates,
             )
 
@@ -236,7 +236,7 @@ class EventAdmin(admin.ModelAdmin):
                 },
             )
 
-        form = GenerateTicketsForm(
+        form = GenerateTicketsForTemplateForm(
             event_templates=queryset.values_list("template", flat=True),
             data=request.POST,
         )

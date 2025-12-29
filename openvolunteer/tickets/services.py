@@ -1,6 +1,7 @@
 from zoneinfo import ZoneInfo
 
 from django.db import transaction
+from django.db.models import QuerySet
 from django.template import Context
 from django.template import Template
 
@@ -12,6 +13,7 @@ from .audit import log_ticket_event
 from .models import Ticket
 from .models import TicketAuditEvent
 from .models import TicketBatch
+from .models import TicketTemplate
 
 
 def render_template(template_str: str, context: dict) -> str:
@@ -82,7 +84,7 @@ def create_actions_for_ticket(*, ticket, ticket_template):
     TicketAction.objects.bulk_create(actions)
 
 
-# ruff: noqa: PLR0913
+# ruff: noqa: PLR0913, PLR0912, C901
 @transaction.atomic
 def generate_tickets_for_event(
     *,
@@ -92,6 +94,7 @@ def generate_tickets_for_event(
     person_queryset=None,
     batch_name=None,
     reason="",
+    shift=None,
     include_default_shift=True,
 ):
     """
@@ -108,7 +111,13 @@ def generate_tickets_for_event(
 
     if ticket_templates is None:
         ticket_templates = event.template.ticket_templates.filter(is_active=True)
-
+    elif isinstance(ticket_templates, QuerySet):
+        pass
+    else:
+        # list / tuple / iterable → coerce to queryset
+        ticket_templates = TicketTemplate.objects.filter(
+            id__in=[t.id for t in ticket_templates],
+        )
     if not ticket_templates.exists():
         msg = "No active TicketTemplates attached to EventTemplate"
         raise ValueError(msg)
@@ -116,13 +125,21 @@ def generate_tickets_for_event(
     # --------------------
     # Resolve assignments / people
     # --------------------
-    assignments_qs = ShiftAssignment.objects.filter(shift__event=event).select_related(
-        "shift",
-        "person",
-    )
+    if not shift:
+        assignments_qs = ShiftAssignment.objects.filter(
+            shift__event=event,
+        ).select_related(
+            "shift",
+            "person",
+        )
 
-    if not include_default_shift:
-        assignments_qs = assignments_qs.exclude(shift__is_default=True)
+        if not include_default_shift:
+            assignments_qs = assignments_qs.exclude(shift__is_default=True)
+    else:
+        assignments_qs = ShiftAssignment.objects.filter(shift=shift).select_related(
+            "shift",
+            "person",
+        )
 
     if person_queryset is not None:
         assignments_qs = assignments_qs.filter(person__in=person_queryset)
@@ -139,6 +156,7 @@ def generate_tickets_for_event(
     batch = TicketBatch.objects.create(
         org=event.org,
         event=event,
+        shift=shift,
         name=batch_name or f"Generated tickets for {event.title}",
         reason=reason,
         created_by=created_by,
@@ -161,7 +179,7 @@ def generate_tickets_for_event(
                 template=tmpl,
                 event=event,
                 person=assignment.person,
-                shift=assignment.shift,
+                shift=shift if shift else assignment.shift,
                 batch=batch,
                 created_by=created_by,
             )

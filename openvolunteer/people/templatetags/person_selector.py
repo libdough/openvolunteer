@@ -44,5 +44,4 @@ def person_selector(context, **kwargs):
         **kwargs,
         "bulk_tags": bulk_tags,
         "bulk_events": bulk_events,
-        "hello": "hello",
     }

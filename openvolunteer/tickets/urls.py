@@ -7,6 +7,11 @@ app_name = "tickets"
 
 urlpatterns = [
     path("", views.ticket_list, name="ticket_list"),
+    path(
+        "events/<uuid:event_id>/generate/<uuid:template_id>/",
+        views.generate_tickets_for_event_template,
+        name="generate_for_event",
+    ),
     path("<uuid:ticket_id>/", views.ticket_detail, name="ticket_detail"),
     path("<uuid:ticket_id>/claim/", views.claim_ticket, name="claim_ticket"),
     path("<uuid:ticket_id>/unclaim/", views.unclaim_ticket, name="unclaim_ticket"),

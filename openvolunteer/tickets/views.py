@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.core.exceptions import PermissionDenied
 from django.http import HttpResponseForbidden
 from django.shortcuts import get_object_or_404
 from django.shortcuts import redirect
@@ -8,7 +9,12 @@ from django.shortcuts import render
 
 from openvolunteer.core.filters import apply_filters
 from openvolunteer.core.pagination import paginate
+from openvolunteer.events.forms import GenerateTicketsForTemplateForm
+from openvolunteer.events.models import Event
+from openvolunteer.events.models import Shift
+from openvolunteer.events.permissions import user_can_manage_events
 from openvolunteer.orgs.queryset import orgs_for_user
+from openvolunteer.people.models import Person
 
 from .actions.enum import TicketActionRunWhen
 from .actions.service import TicketActionService
@@ -19,6 +25,7 @@ from .forms import TicketUpdateForm
 from .models import Ticket
 from .models import TicketAuditEvent
 from .models import TicketStatus
+from .services import generate_tickets_for_event
 
 
 @login_required
@@ -64,6 +71,79 @@ def ticket_detail(request, ticket_id):
         {
             "ticket": ticket,
             "form": form,
+        },
+    )
+
+
+@login_required
+def generate_tickets_for_event_template(request, event_id, template_id):
+    event = get_object_or_404(
+        Event.objects.select_related("org", "template"),
+        id=event_id,
+    )
+
+    if not user_can_manage_events(request.user, event):
+        msg = "User can not generate tickets for this event"
+        raise PermissionDenied(msg)
+
+    shift_id = request.GET.get("shift_id")
+    shift = Shift.objects.get(id=shift_id) if shift_id else event.default_shift()
+
+    ticket_template = get_object_or_404(
+        event.template.ticket_templates.filter(is_active=True),
+        id=template_id,
+    )
+
+    # People scoped to this event's org
+    people_qs = Person.objects.filter(
+        org_links__org=event.org,
+        org_links__is_active=True,
+        shift_assignments__shift__event=event,
+    )
+    # Limit to shift
+    if shift_id:
+        people_qs.filter(
+            shift_assignments__shift=shift,
+        )
+    people_qs = people_qs.distinct()
+
+    shifts = event.shifts.with_assignment_breakdown()
+
+    form = GenerateTicketsForTemplateForm(
+        event=event,
+        people_queryset=people_qs,
+        shifts=shifts,
+        data=request.POST or None,
+    )
+
+    if request.method == "POST" and form.is_valid():
+        generate_tickets_for_event(
+            event=event,
+            shift=shift,
+            created_by=request.user,
+            ticket_templates=[ticket_template],
+            person_queryset=form.cleaned_data["people"],
+            batch_name=form.cleaned_data.get("batch_name"),
+            include_default_shift=form.cleaned_data.get("shift") is None,
+            reason=f"Generated via event UI ({ticket_template.name})",
+        )
+
+        messages.success(
+            request,
+            f"Tickets generated using “{ticket_template.name}”.",
+        )
+        return redirect("events:event_detail", event.id)
+
+    return render(
+        request,
+        "tickets/generate_for_event_template.html",
+        {
+            "shift": shift,
+            "event": event,
+            "org": event.org,
+            "ticket_template": ticket_template,
+            "form": form,
+            "people_queryset": people_qs,
         },
     )
 

@@ -197,10 +197,13 @@ def person_search(request):  # noqa: C901
             raise PermissionDenied(msg)
 
     q = request.GET.get("q", "").strip()
+    event_id = request.GET.get("event_id")
     org_id = request.GET.get("org_id")
     exclude_org_id = request.GET.get("exclude_org_id")
     tag_ids = request.GET.get("tag_ids")
     participated_event_id = request.GET.get("participated_event_id")
+
+    return_ids = request.GET.get("return_ids") == "1"
 
     if exclude_org_id and exclude_org_id == org_id:
         msg = "Exclude and include org IDs match"
@@ -211,7 +214,8 @@ def person_search(request):  # noqa: C901
     # ---- Visibility scoping ----
     if not (user.is_staff or user.is_superuser):
         people = people.filter(
-            org__in=orgs_for_user(request.user),
+            org_links__org__in=orgs_for_user(request.user),
+            org_links__is_active=True,
         )
 
     # ---- Org include / exclude ----
@@ -232,10 +236,16 @@ def person_search(request):  # noqa: C901
         tag_ids = [tid for tid in tag_ids.split(",") if tid]
         people = people.filter(taggings__tag_id__in=tag_ids)
 
+    if event_id and participated_event_id:
+        msg = "event_id and participated_event_id cannot be used together"
+        raise BadRequest(msg)
+
+    query_event_id = event_id or participated_event_id
     # ---- Event participation ----
-    if participated_event_id:
+    if query_event_id:
+        event = Event.objects.get(id=query_event_id)
         people = people.filter(
-            assignments__shift__event_id=participated_event_id,
+            shift_assignments__shift__event=event,
         )
 
     # ---- Free text search ----
@@ -251,11 +261,16 @@ def person_search(request):  # noqa: C901
             | Q(taggings__tag__name__icontains=q),
         )
 
-    people = (
-        people.distinct()
-        .order_by("full_name")
-        .prefetch_related("taggings__tag")[:MAX_RESULTS]
-    )
+    people = people.distinct().order_by("full_name")
+
+    # Only return list of people IDs
+    if return_ids:
+        ids = list(
+            people.values_list("id", flat=True),
+        )
+        return JsonResponse({"ids": [str(i) for i in ids]})
+
+    people = people.prefetch_related("taggings__tag")[:MAX_RESULTS]
 
     return JsonResponse(
         {

@@ -201,7 +201,7 @@ def install_default_ticket_templates(actions):
                 "effort to make a difference.\n"
                 "\n"
                 "Would you be interested in volunteering for "
-                "{{event_type}} on {{event_starts_at.date.est}}"
+                "{{event_type}} on {{event_starts_at.date.est}} "
                 "at {{event_starts_at.time.est}}?\n"
                 "\n"
                 "Please let us know!\n"

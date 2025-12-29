@@ -7,9 +7,7 @@
   <a href="{% url 'events:event_list' %}"
      class="text-muted mb-3 d-inline-block">← Back to events</a>
   <div class="row">
-    {# ========================================================= #}
-    {# LEFT COLUMN: EVENT META                                  #}
-    {# ========================================================= #}
+    {# LEFT COLUMN: EVENT META #}
     <div class="col-md-4">
       <div class="card shadow-sm mb-4">
         <div class="card-header">Event Details</div>
@@ -41,10 +39,29 @@
           </div>
         </div>
       </div>
+      {# CREATE TICKETS: if can edit event #}
+      {% if can_edit %}
+        <div class="card shadow-sm mb-4">
+          <div class="card-header">Create Tickets</div>
+          <div class="card-body small">
+            {% if ticket_templates %}
+              <p class="text-muted mb-2">Generate tickets using this event’s template.</p>
+              <div class="d-grid gap-2">
+                {% for template in ticket_templates %}
+                  <a href="{% url 'tickets:generate_for_event' event.id template.id %}"
+                     class="btn btn-sm btn-outline-primary text-start">
+                    <strong>{{ template.name }}</strong>
+                  </a>
+                {% endfor %}
+              </div>
+            {% else %}
+              <div class="text-muted fst-italic">No ticket templates available for this event.</div>
+            {% endif %}
+          </div>
+        </div>
+      {% endif %}
     </div>
-    {# ========================================================= #}
-    {# RIGHT COLUMN: MAIN CONTENT                               #}
-    {# ========================================================= #}
+    {# RIGHT COLUMN: MAIN CONTENT #}
     <div class="col-md-8">
       <div class="d-flex justify-content-between align-items-start mb-3">
         <h1 class="mb-0">{{ event.title }}</h1>
