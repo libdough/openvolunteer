@@ -1,7 +1,11 @@
 from zoneinfo import ZoneInfo
 
 from django.db import transaction
+from django.db.models import Case
+from django.db.models import IntegerField
 from django.db.models import QuerySet
+from django.db.models import Value
+from django.db.models import When
 from django.template import Context
 from django.template import Template
 
@@ -177,6 +181,7 @@ def generate_tickets_for_event(
         for assignment in assignments:
             ticket = create_ticket(
                 template=tmpl,
+                org=event.org,
                 event=event,
                 person=assignment.person,
                 shift=shift if shift else assignment.shift,
@@ -192,9 +197,10 @@ def generate_tickets_for_event(
 def create_ticket(
     *,
     template,
-    event,
-    person,
+    org,
     created_by,
+    person=None,
+    event=None,
     batch=None,
     shift=None,
 ):
@@ -205,24 +211,58 @@ def create_ticket(
     - audit logging
     """
 
+    # Deduplication
+    if Ticket.objects.filter(
+        template=template,
+        org=org,
+        person=person if person else None,
+        event=event if event else None,
+    ).exists():
+        return None
+
+    def safe_attr(obj, attr, default=None):
+        return getattr(obj, attr, default) if obj is not None else default
+
+    def safe_name(user):
+        if user is None:
+            return None
+        return user.name or user.username
+
     context = {
-        "event_title": event.title,
-        "event_owner": event.owned_by.name or event.owned_by.username,
-        "event_type": event.template.name,
-        "org_name": event.org.name,
-        "event_starts_at": format_event_times(event.starts_at),
-        "event_ends_at": format_event_times(event.ends_at),
-        "shift_starts_at": format_event_times(shift.starts_at),
-        "shift_ends_at": format_event_times(shift.ends_at),
-        "person": None,  # lazy load below
-        "task_name": template.name,
-        "task_type": event.template.name,
-        "reporter_name": created_by.name or created_by.username,
+        "org_name": org.name,
+        # Event-related
+        "event_title": safe_attr(event, "title"),
+        "event_owner": safe_name(safe_attr(event, "owned_by")),
+        "event_type": safe_attr(safe_attr(event, "template"), "name"),
+        "event_starts_at": (
+            format_event_times(event.starts_at) if event and event.starts_at else None
+        ),
+        "event_ends_at": (
+            format_event_times(event.ends_at) if event and event.ends_at else None
+        ),
+        # Shift-related
+        "shift_starts_at": (
+            format_event_times(shift.starts_at) if shift and shift.starts_at else None
+        ),
+        "shift_ends_at": (
+            format_event_times(shift.ends_at) if shift and shift.ends_at else None
+        ),
+        # People
+        "person": None,
+        # Ticket / task
+        "task_name": safe_attr(template, "name"),
+        "task_type": safe_attr(safe_attr(event, "template"), "name"),
+        # Reporter
+        "reporter_name": safe_name(created_by),
     }
 
-    # Lazy-load person only if template needs it
-    person = Person.objects.get(id=person.id)
-    context["person"] = person
+    # Lazy-load person only if provided and needed
+    if person is not None:
+        if isinstance(person, Person):
+            person_obj = person
+        else:
+            person_obj = Person.objects.get(id=person)
+        context["person"] = person_obj
 
     name = render_template(template.ticket_name_template, context)
     description = render_template(template.description_template, context)
@@ -230,7 +270,7 @@ def create_ticket(
     ticket = Ticket.objects.create(
         name=name,
         description=description,
-        org=event.org,
+        org=org,
         event=event,
         person=person,
         batch=batch,
@@ -258,3 +298,17 @@ def create_ticket(
     )
 
     return ticket
+
+
+def get_ticket_template_for_org(name, org):
+    return (
+        TicketTemplate.objects.filter(name=name, org__in=[org, None])
+        .order_by(
+            Case(
+                When(org=org, then=Value(0)),
+                When(org__isnull=True, then=Value(1)),
+                output_field=IntegerField(),
+            ),
+        )
+        .first()
+    )

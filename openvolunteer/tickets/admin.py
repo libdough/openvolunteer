@@ -283,6 +283,7 @@ class TicketAdmin(admin.ModelAdmin):
             # Creating a NEW ticket
             create_ticket(
                 template=obj.template,
+                org=obj.org,
                 event=obj.event,
                 person=obj.person,
                 shift=obj.shift,

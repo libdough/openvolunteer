@@ -1,3 +1,9 @@
+import json
+
+from django_celery_beat.models import CrontabSchedule
+from django_celery_beat.models import IntervalSchedule
+from django_celery_beat.models import PeriodicTask
+
 from openvolunteer.events.models import EventTemplate
 from openvolunteer.events.models import ShiftAssignmentStatus
 
@@ -368,3 +374,97 @@ def install_default_event_templates(ticket_templates):
         )
 
         event_template.ticket_templates.set(tickets)
+
+
+def install_default_tasks():
+    every_fifteen_minutes, _ = IntervalSchedule.objects.get_or_create(
+        every=15,
+        period=IntervalSchedule.MINUTES,
+    )
+
+    create_intro_tix, _ = PeriodicTask.objects.get_or_create(
+        name="Create intro tickets for unintroduced people",
+        defaults={
+            "task": "tickets.tasks.create_tickets_for_people_with_tag",
+            "interval": every_fifteen_minutes,
+            "kwargs": json.dumps(
+                {
+                    "template_name": "Introduction",
+                    "tag_name": "unintroduced",
+                },
+            ),
+            "enabled": True,
+            "description": (
+                "Create introduction tickets for "
+                "those that have not yet been introduced"
+            ),
+        },
+    )
+
+    midnight, _ = CrontabSchedule.objects.get_or_create(
+        minute="0",
+        hour="5",
+        day_of_week="*",
+        day_of_month="*",
+        month_of_year="*",
+        timezone="UTC",
+    )
+
+    cancel_stale_tix = PeriodicTask.objects.get_or_create(
+        name="Cancel stale tickets",
+        defaults={
+            "task": "tickets.tasks.cancel_stale_tickets",
+            "crontab": midnight,
+            "kwargs": json.dumps(
+                {
+                    "statuses": ["in_progress", "blocked"],
+                    "days_stale": 10,
+                    "new_status": "canceled",
+                },
+            ),
+            "enabled": True,
+            "description": "Cancel old tasks that have not been modified in 30 days",
+        },
+    )
+
+    cancel_tix_canceled_events = PeriodicTask.objects.get_or_create(
+        name="Cancel tickets for canceled events",
+        defaults={
+            "task": "tickets.tasks.cancel_tickets_for_canceled_events",
+            "crontab": midnight,
+            "kwargs": json.dumps(
+                {
+                    "days_recent": 1,
+                    "new_status": "canceled",
+                },
+            ),
+            "enabled": True,
+            "description": (
+                "Cancel tickets that are associated with "
+                "canceled events. There is a default buffer to prevent "
+                "issues with accidental deletions of events"
+            ),
+        },
+    )
+
+    delete_completed_tickets = PeriodicTask.objects.get_or_create(
+        name="Delete completed tickets after 30 days",
+        defaults={
+            "task": "tickets.tasks.delete_tickets",
+            "crontab": midnight,
+            "kwargs": json.dumps(
+                {
+                    "days_old": 30,
+                    "statuses": ["completed", "canceled"],
+                },
+            ),
+            "enabled": True,
+        },
+    )
+
+    return {
+        "delete_completed_tickets": delete_completed_tickets,
+        "create_intro_tix": create_intro_tix,
+        "cancel_stale_tix": cancel_stale_tix,
+        "cancel_tix_canceled_events": cancel_tix_canceled_events,
+    }

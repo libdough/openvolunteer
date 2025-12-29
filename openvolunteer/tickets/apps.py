@@ -13,6 +13,7 @@ class TicketsConfig(AppConfig):
         # Make sure recievers are registered
 
         from .defaults import install_default_event_templates
+        from .defaults import install_default_tasks
         from .defaults import install_default_ticket_actions
         from .defaults import install_default_ticket_templates
 
@@ -20,5 +21,6 @@ class TicketsConfig(AppConfig):
             actions = install_default_ticket_actions()
             ticket_templates = install_default_ticket_templates(actions)
             install_default_event_templates(ticket_templates)
+            install_default_tasks()
 
         post_migrate.connect(install_defaults, sender=self)
