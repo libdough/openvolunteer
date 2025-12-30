@@ -4,7 +4,6 @@ import uuid
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
 from django.forms import modelformset_factory
-from django.http import Http404
 from django.http import HttpResponseForbidden
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
@@ -208,7 +207,8 @@ def event_edit(request, event_id):
     event = get_object_or_404(Event, id=event_id)
 
     if not user_can_manage_events(request.user, event):
-        raise Http404
+        msg = "You do not have permission to edit this event."
+        raise PermissionDenied(msg)
 
     default_shift = event.default_shift()
 
@@ -304,7 +304,8 @@ def shift_assign_people(request, shift_id):
     )
 
     if not user_can_assign_people(request.user, shift.event):
-        raise Http404
+        msg = "You do not have permission to assign people to this event."
+        raise PermissionDenied(msg)
 
     # ---- Currently assigned people (for preload + diff) ----
     assigned_people = (

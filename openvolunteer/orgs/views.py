@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 from django.contrib.auth.decorators import login_required
+from django.core.exceptions import PermissionDenied
 from django.db.models import Case
 from django.db.models import Count
 from django.db.models import IntegerField
@@ -95,7 +96,8 @@ def org_detail(request, slug):
         raise Http404
 
     if not user_can_view_org(request.user, org):
-        raise Http404
+        msg = "You do not have permission to view this org."
+        raise PermissionDenied(msg)
 
     memberships = (
         Membership.objects.filter(org=org, is_active=True)
@@ -160,7 +162,8 @@ def org_detail(request, slug):
 @login_required
 def org_create(request):
     if not user_can_create_org(request.user):
-        raise Http404
+        msg = "You do not have permission to create new orgs."
+        raise PermissionDenied(msg)
 
     if request.method == "POST":
         form = OrganizationForm(request.POST)
@@ -193,7 +196,8 @@ def org_edit(request, slug):
     org = get_object_or_404(Organization, slug=slug)
 
     if not user_can_edit_org(request.user, org):
-        raise Http404
+        msg = "You do not have permission to edit this org."
+        raise PermissionDenied(msg)
 
     if request.method == "POST":
         form = OrganizationForm(request.POST, instance=org)
@@ -218,7 +222,8 @@ def org_members(request, slug):
     org = get_object_or_404(Organization, slug=slug)
 
     if not user_can_manage_members(request.user, org):
-        raise Http404
+        msg = "You do not have permission to manage members of this org."
+        raise PermissionDenied(msg)
 
     members = org.memberships.select_related("user").order_by("role")
 
@@ -263,7 +268,8 @@ def org_member_update(request, slug, member_id):
     member = get_object_or_404(Membership, id=member_id, org=org)
 
     if not user_can_manage_members(request.user, org):
-        raise Http404
+        msg = "You do not have permission to update roles for this org."
+        raise PermissionDenied(msg)
 
     if request.method == "POST":
         form = UpdateMemberRoleForm(request.POST, instance=member)
@@ -278,8 +284,10 @@ def org_member_remove(request, slug, member_id):
     org = get_object_or_404(Organization, slug=slug)
     member = get_object_or_404(Membership, id=member_id, org=org)
 
-    if not user_can_manage_members(request.user, org):
-        raise Http404
+    # You cannot ever remove org owners through this view
+    if not user_can_manage_members(request.user, org) or member.role == OrgRole.OWNER:
+        msg = "You do not have permission to remove this member."
+        raise PermissionDenied(msg)
 
     if request.method == "POST":
         member.delete()
@@ -292,7 +300,8 @@ def org_people(request, slug):
     org = get_object_or_404(Organization, slug=slug)
 
     if not user_can_manage_people(request.user, org):
-        raise Http404
+        msg = "You do not have view people assigned to this org."
+        raise PermissionDenied(msg)
 
     people_links = (
         org.people_links.select_related("person")
@@ -355,7 +364,8 @@ def org_calendar(request, slug):
     org = get_object_or_404(Organization, slug=slug)
 
     if not user_can_view_org(request.user, org):
-        raise Http404
+        msg = "You do not have permission to view this org's calendar."
+        raise PermissionDenied(msg)
 
     return render(
         request,
