@@ -6,8 +6,12 @@
    ticket_count: int (for "showing X of Y")
 #} -->
 <div class="card shadow-sm mb-4">
-  <div class="card-header d-flex justify-content-between align-items-center">
-    <span>{{ title|default:"Tickets" }}</span>
+  <div class="card-header d-flex align-items-center">
+    <span class="fw-semibold">{{ title|default:"Tickets" }}</span>
+    <div class="ms-auto">
+      <a href="{% url 'tickets:ticket_list' %}?{{ ticket_querystring }}"
+         class="text-muted small text-decoration-none">View all</a>
+    </div>
   </div>
   <div class="card-body p-0">
     {% if tickets %}

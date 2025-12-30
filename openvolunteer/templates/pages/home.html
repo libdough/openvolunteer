@@ -23,7 +23,7 @@
       <!-- RIGHT: Tickets + Orgs -->
       <div class="col-12 col-lg-6 d-flex flex-column gap-3">
         <!-- My Tickets -->
-        {% with tickets=tickets title="My Open Tickets" ticket_count=ticket_count empty_message="You have no open tickets." show_claim=False %}
+        {% with tickets=tickets title="My Open Tickets" ticket_count=ticket_count empty_message="You have no open tickets." ticket_querystring="assignment=me" show_claim=False %}
           {% include "components/ticket_list_card.html" %}
         {% endwith %}
         <!-- My Organizations -->

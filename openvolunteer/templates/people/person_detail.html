@@ -15,7 +15,7 @@
           <span>Profile</span>
           {% if can_edit %}
             <a href="{% url 'people:person_edit' person_id=person.id %}"
-               class="btn btn-sm btn-outline-primary">✏️ Edit</a>
+               class="btn btn-sm btn-outline-primary">Edit</a>
           {% endif %}
         </div>
         <div class="card-body text-center">
@@ -106,7 +106,7 @@
         </div>
       </div>
       <!-- Tickets -->
-      {% with tickets=tickets title="Related Tickets" ticket_count=ticket_count show_claim=True claim_querystring=claim_querystring empty_message="No open tickets for this Person." %}
+      {% with tickets=tickets title="Related Tickets" ticket_count=ticket_count show_claim=True ticket_querystring=ticket_querystring empty_message="No open tickets for this Person." %}
         {% include "components/ticket_list_card.html" %}
       {% endwith %}
       <!-- Activity -->

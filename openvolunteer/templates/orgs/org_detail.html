@@ -13,7 +13,7 @@
     </div>
     {% if can_edit_org %}
       <a href="{% url 'orgs:org_edit' slug=org.slug %}"
-         class="btn btn-outline-primary btn-sm">✏️ Edit organization</a>
+         class="btn btn-outline-primary btn-sm">Edit organization</a>
     {% endif %}
   </div>
   <div class="row g-4">
@@ -57,7 +57,7 @@
     <!-- RIGHT COLUMN -->
     <div class="col-lg-8">
       <!-- TICKETS -->
-      {% with tickets=tickets title="Open Tickets" ticket_count=ticket_count show_claim=True claim_querystring=claim_querystring empty_message="No open tickets for this organization." %}
+      {% with tickets=tickets title="Open Tickets" ticket_count=ticket_count show_claim=True ticket_querystring=ticket_querystring empty_message="No open tickets for this organization." %}
         {% include "components/ticket_list_card.html" %}
       {% endwith %}
       <!-- EVENTS -->
@@ -66,7 +66,7 @@
           <span>Events</span>
           {% if can_manage_events %}
             <a href="{% url 'events:event_create' %}?org={{ org.id }}"
-               class="btn btn-sm btn-outline-primary">+ Add Event</a>
+               class="btn btn-sm btn-outline-primary">Add Event</a>
           {% endif %}
         </div>
         <div class="card-body p-0">

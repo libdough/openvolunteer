@@ -42,7 +42,7 @@ def get_filtered_tickets(  # noqa: PLR0913
 
     ctx = {}
     if claim_qs:
-        ctx["claim_querystring"] = "&".join(f"{k}={v}" for k, v in claim_qs.items())
+        ctx["ticket_querystring"] = "&".join(f"{k}={v}" for k, v in claim_qs.items())
 
     tickets = (
         qs.select_related("assigned_to", "reporter")
