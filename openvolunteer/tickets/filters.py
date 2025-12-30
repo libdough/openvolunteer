@@ -3,7 +3,6 @@ from django.db.models import Q
 from openvolunteer.events.models import EventTemplate
 from openvolunteer.orgs.queryset import orgs_for_user
 
-from .models import Ticket
 from .models import TicketBatch
 from .models import TicketStatus
 
@@ -60,17 +59,21 @@ TICKET_FILTERS = [
         "lookup": "priority",
     },
     {
+        "name": "org",
+        "label": "",
+        "type": "hidden",
+        "lookup": "org",
+    },
+    {
+        "name": "person",
+        "label": "",
+        "type": "hidden",
+        "lookup": "person",
+    },
+    {
         "name": "event",
-        "label": "Event",
-        "type": "select",
-        # Scoped by org via queryset passed into filter system
-        "choices": lambda request: (
-            Ticket.objects.filter(org__in=orgs_for_user(request.user))
-            .exclude(event__isnull=True)
-            .values_list("event__id", "event__title")
-            .distinct()
-            .order_by("event__title")
-        ),
+        "label": "",
+        "type": "hidden",
         "lookup": "event",
     },
     {

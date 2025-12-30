@@ -34,6 +34,7 @@ from .permissions import user_can_edit_org
 from .permissions import user_can_manage_members
 from .permissions import user_can_manage_people
 from .permissions import user_can_view_org
+from .queryset import orgs_for_user
 
 
 @login_required
@@ -42,8 +43,7 @@ def org_list(request):
         orgs = Organization.objects.all()
     else:
         orgs = Organization.objects.filter(
-            memberships__user=request.user,
-            memberships__is_active=True,
+            id__in=orgs_for_user(request.user),
         )
 
     orgs = (

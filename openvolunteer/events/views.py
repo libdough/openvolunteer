@@ -18,6 +18,7 @@ from openvolunteer.core.filters import apply_filters
 from openvolunteer.core.pagination import paginate
 from openvolunteer.orgs.models import Organization
 from openvolunteer.orgs.permissions import user_can_view_org
+from openvolunteer.orgs.queryset import orgs_for_user
 from openvolunteer.people.models import Person
 from openvolunteer.tickets.models import TicketStatus
 from openvolunteer.tickets.queryset import get_filtered_tickets
@@ -37,6 +38,13 @@ from .permissions import user_can_manage_events
 @login_required
 def event_list(request):
     qs = Event.objects.select_related("org").order_by("starts_at")
+
+    if request.user.is_staff or request.user.is_superuser:
+        pass
+    else:
+        qs = qs.filter(
+            org__in=orgs_for_user(request.user),
+        )
 
     qs, filter_ctx = apply_filters(request, qs, EVENT_FILTERS)
     pagination = paginate(request, qs, per_page=20)

@@ -84,7 +84,7 @@
         </div>
         {# Ticket View #}
       {% endif %}
-      {% with tickets=tickets title="Open Tickets" ticket_count=ticket_count show_claim=True claim_querystring=claim_querystring empty_message="No open tickets for this Events." %}
+      {% with tickets=tickets title="Open Tickets" ticket_count=ticket_count show_claim=True ticket_querystring=ticket_querystring empty_message="No open tickets for this Events." %}
         {% include "components/ticket_list_card.html" %}
       {% endwith %}
       {# Event-level assignments #}

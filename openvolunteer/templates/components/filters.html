@@ -1,40 +1,50 @@
 {% if filters %}
   <form method="get" class="card shadow-sm mb-4">
     <div class="card-body">
+      {% for f in filters %}
+        {% if f.type == "hidden" %}<input type="hidden" name="{{ f.name }}" value="{{ f.value|default:'' }}" />{% endif %}
+      {% endfor %}
       <div class="row g-3 align-items-end">
         {% for f in filters %}
-          <div class="col-md-3">
-            <label class="form-label small text-muted">{{ f.label }}</label>
-            {# ===== TEXT / STRING ===== #}
-            {% if f.type == "text" %}
-              <input type="text"
-                     name="{{ f.name }}"
-                     class="form-control"
-                     value="{{ f.value|default:'' }}" />
-              {# ===== INTEGER ===== #}
-            {% elif f.type == "int" %}
-              <input type="number"
-                     name="{{ f.name }}"
-                     class="form-control"
-                     value="{{ f.value|default:'' }}" />
-              {# ===== BOOLEAN ===== #}
-            {% elif f.type == "boolean" %}
-              <select name="{{ f.name }}" class="form-select">
-                <option value="">Any</option>
-                <option value="1" {% if f.value == "1" %}selected{% endif %}>Yes</option>
-                <option value="0" {% if f.value == "0" %}selected{% endif %}>No</option>
-              </select>
-              {# ===== ENUM / CHOICES ===== #}
-            {% elif f.type == "select" %}
-              <select name="{{ f.name }}" class="form-select">
-                <option value="">Any</option>
-                {% for value, label in f.choices %}
-                  <option value="{{ value }}"
-                          {% if f.value == value|stringformat:"s" %}selected{% endif %}>{{ label }}</option>
-                {% endfor %}
-              </select>
-            {% endif %}
-          </div>
+          {% if f.type != "hidden" %}
+            <div class="col-md-3">
+              <label class="form-label small text-muted">{{ f.label }}</label>
+              {# ===== TEXT / STRING ===== #}
+              {% if f.type == "text" %}
+                <input type="text"
+                       name="{{ f.name }}"
+                       class="form-control"
+                       value="{{ f.value|default:'' }}" />
+                {# ===== INTEGER ===== #}
+              {% elif f.type == "int" %}
+                <input type="number"
+                       name="{{ f.name }}"
+                       class="form-control"
+                       value="{{ f.value|default:'' }}" />
+                {# ===== BOOLEAN ===== #}
+              {% elif f.type == "boolean" %}
+                <select name="{{ f.name }}" class="form-select">
+                  <option value="">Any</option>
+                  <option value="1" {% if f.value == "1" %}selected{% endif %}>Yes</option>
+                  <option value="0" {% if f.value == "0" %}selected{% endif %}>No</option>
+                </select>
+                {# ===== ENUM / CHOICES ===== #}
+              {% elif f.type == "select" %}
+                <select name="{{ f.name }}" class="form-select">
+                  <option value="">Any</option>
+                  {% for value, label in f.choices %}
+                    <option value="{{ value }}"
+                            {% if f.value == value|stringformat:"s" %}selected{% endif %}>{{ label }}</option>
+                  {% endfor %}
+                </select>
+              {% elif f.type == "hidden" %}
+                <input type="hidden"
+                       name="{{ f.name }}"
+                       class="form-control"
+                       value="{{ f.value|default:'' }}" />
+              {% endif %}
+            </div>
+          {% endif %}
         {% endfor %}
         {# ===== ACTIONS ===== #}
         <div class="col-md-auto">

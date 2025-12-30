@@ -1,39 +1,81 @@
 <table class="table table-sm table-borderless mb-0 small">
   <tbody>
-    {% if shift.status_counts.confirmed %}
-      <tr>
-        <th class="fw-normal text-success">Confirmed</th>
-        <td class="text-end fw-semibold">{{ shift.status_counts.confirmed }}</td>
-      </tr>
-    {% endif %}
-    {% if shift.status_counts.partial %}
-      <tr>
-        <th class="fw-normal text-info">Maybe</th>
-        <td class="text-end fw-semibold">{{ shift.status_counts.partial }}</td>
-      </tr>
-    {% endif %}
-    {% if shift.status_counts.pending %}
-      <tr>
-        <th class="fw-normal text-warning">Pending</th>
-        <td class="text-end fw-semibold">{{ shift.status_counts.pending }}</td>
-      </tr>
-    {% endif %}
-    {% if shift.status_counts.init %}
-      <tr>
-        <th class="fw-normal text-muted">Newly Added</th>
-        <td class="text-end fw-semibold">{{ shift.status_counts.init }}</td>
-      </tr>
-    {% endif %}
-    {% if shift.status_counts.declined %}
-      <tr>
-        <th class="fw-normal text-danger">Declined</th>
-        <td class="text-end fw-semibold">{{ shift.status_counts.declined }}</td>
-      </tr>
-    {% endif %}
-    {% if not shift.assigned_count %}
-      <tr>
-        <td colspan="2" class="text-muted fst-italic">No assignments yet</td>
-      </tr>
-    {% endif %}
+    {% with sc=shift.status_counts %}
+      {% if sc.init %}
+        <tr>
+          <td class="py-1">
+            <div class="d-flex justify-content-between align-items-center gap-2">
+              <span class="text-secondary fw-medium">New</span>
+              <span class="badge bg-secondary text-white">{{ sc.init }}</span>
+            </div>
+          </td>
+        </tr>
+      {% endif %}
+      {% if sc.pending %}
+        <tr>
+          <td class="py-1">
+            <div class="d-flex justify-content-between align-items-center gap-2">
+              <span class="text-warning fw-medium">Pending</span>
+              <span class="badge bg-warning text-dark">{{ sc.pending }}</span>
+            </div>
+          </td>
+        </tr>
+      {% endif %}
+      {% if sc.partial %}
+        <tr>
+          <td class="py-1">
+            <div class="d-flex justify-content-between align-items-center gap-2">
+              <span class="text-info fw-medium">Maybe</span>
+              <span class="badge bg-info text-white">{{ sc.partial }}</span>
+            </div>
+          </td>
+        </tr>
+      {% endif %}
+      {% if sc.confirmed %}
+        <tr>
+          <td class="py-1">
+            <div class="d-flex justify-content-between align-items-center gap-2">
+              <span class="text-success fw-medium">Confirmed</span>
+              <span class="badge bg-success text-white">{{ sc.confirmed }}</span>
+            </div>
+          </td>
+        </tr>
+      {% endif %}
+      {% if sc.declined %}
+        <tr>
+          <td class="py-1">
+            <div class="d-flex justify-content-between align-items-center gap-2">
+              <span class="text-danger fw-medium">Declined</span>
+              <span class="badge bg-danger text-white">{{ sc.declined }}</span>
+            </div>
+          </td>
+        </tr>
+      {% endif %}
+      {% if sc.signedin %}
+        <tr>
+          <td class="py-1">
+            <div class="d-flex justify-content-between align-items-center gap-2">
+              <span class="text-success fw-medium">Signed In</span>
+              <span class="badge bg-success text-white">{{ sc.declined }}</span>
+            </div>
+          </td>
+        </tr>
+      {% endif %}
+      {% if sc.no_show %}
+        <tr>
+          <td class="py-1">
+            <div class="d-flex justify-content-between align-items-center gap-2">
+              <span class="text-danger fw-medium">No Shows</span>
+              <span class="badge bg-danger text-white">{{ sc.declined }}</span>
+            </div>
+          </td>
+        </tr>
+      {% endif %}
+      {% if not shift.assigned_count %}
+        <tr>
+          <td class="text-center text-muted fst-italic py-2">No assignments yet</td>
+        </tr>
+      {% endif %}
+    {% endwith %}
   </tbody>
 </table>
