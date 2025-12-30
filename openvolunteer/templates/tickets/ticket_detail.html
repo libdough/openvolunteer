@@ -34,7 +34,7 @@
              aria-label="Ticket status">
           {% for value,label in status_buttons %}
             <button type="button"
-                    class="btn {% if value == form.status.value %}btn-primary disabled{% else %}btn-outline-primary{% endif %}"
+                    class="btn {% if value == form.status.value %}btn-primary disabled{% elif form.status.value == 'open' %}btn-secondary disabled sm{% else %}btn-outline-primary{% endif %}"
                     {% if value == form.status.value %}disabled{% endif %}
                     onclick="setStatus('{{ value }}', this)">{{ label }}</button>
           {% endfor %}
@@ -168,6 +168,14 @@
             <dd class="col-7">
               {{ ticket.reporter.name|default:ticket.reporter }}
             </dd>
+            <dt class="col-5">Person</dt>
+            <dd class="col-7">
+              {% if ticket.person %}
+                <a href="{% url 'people:person_detail' ticket.person.id %}">{{ ticket.person.discord|default:ticket.person }}</a>
+              {% else %}
+                <span class="text-muted">None</span>
+              {% endif %}
+            </dd>
             <dt class="col-5">Event</dt>
             <dd class="col-7">
               {% if ticket.event %}
@@ -184,6 +192,9 @@
                 <span class="text-muted">—</span>
               {% endif %}
             </dd>
+            {% if not can_claim and ticket.assigned_to != request.user %}
+              <small>You lack permissions to claim this ticket</small>
+            {% endif %}
           </dl>
         </div>
       </div>

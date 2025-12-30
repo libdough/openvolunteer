@@ -153,6 +153,14 @@ class ShiftQuerySet(models.QuerySet):
                 "assignments",
                 filter=Q(assignments__status=ShiftAssignmentStatus.CONFIRMED),
             ),
+            assignments_signedin=Count(
+                "assignments",
+                filter=Q(assignments__status=ShiftAssignmentStatus.SIGNEDIN),
+            ),
+            assignments_noshow=Count(
+                "assignments",
+                filter=Q(assignments__status=ShiftAssignmentStatus.NOSHOW),
+            ),
         )
 
 
@@ -199,6 +207,8 @@ class Shift(models.Model):
             declined = getattr(self, "assignments_declined", 0)
             partial = getattr(self, "assignments_partial", 0)
             confirmed = getattr(self, "assignments_confirmed", 0)
+            signedin = getattr(self, "signedin", 0)
+            no_show = getattr(self, "assignments_noshow", 0)
 
         return Counts()
 
@@ -219,6 +229,8 @@ class ShiftAssignmentStatus(models.TextChoices):
     DECLINED = "declined", "Declined"
     PARTIAL = "partial", "Partially committed"
     CONFIRMED = "confirmed", "Fully committed"
+    SIGNEDIN = "sgined_in", "Signed In"
+    NOSHOW = "no_show", "No Show"
 
 
 class ShiftAssignment(models.Model):

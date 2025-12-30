@@ -11,6 +11,7 @@ def get_filtered_tickets(  # noqa: PLR0913
     *,
     org=None,
     event=None,
+    person=None,
     shift=None,
     status=None,
     exclude_statuses=None,
@@ -26,6 +27,9 @@ def get_filtered_tickets(  # noqa: PLR0913
     if event:
         qs = qs.filter(event=event)
         claim_qs["event"] = event.id
+    if person:
+        qs = qs.filter(person=person)
+        claim_qs["person"] = person.id
     if shift:
         qs = qs.filter(shift=shift)
         claim_qs["shift"] = shift.id
@@ -45,7 +49,12 @@ def get_filtered_tickets(  # noqa: PLR0913
         .annotate(
             finished_sort=Case(
                 When(status=TicketStatus.OPEN, then=Value(0)),
-                default=Value(1),
+                When(claimable=False, then=Value(1)),
+                When(
+                    status__in=[TicketStatus.COMPLETED, TicketStatus.CANCELED],
+                    then=Value(3),
+                ),
+                default=Value(2),
                 output_field=IntegerField(),
             ),
         )

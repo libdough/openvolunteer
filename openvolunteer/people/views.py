@@ -18,6 +18,7 @@ from openvolunteer.orgs.models import Membership
 from openvolunteer.orgs.models import Organization
 from openvolunteer.orgs.permissions import user_can_manage_people
 from openvolunteer.orgs.queryset import orgs_for_user
+from openvolunteer.tickets.queryset import get_filtered_tickets
 
 from .filters import PERSON_FILTERS
 from .forms import PersonCSVUploadForm
@@ -77,6 +78,11 @@ def person_detail(request, person_id):
         .order_by("starts_at")
     )
 
+    ticket_ctx = get_filtered_tickets(
+        person=person,
+        limit=10,
+    )
+
     return render(
         request,
         "people/person_detail.html",
@@ -84,6 +90,7 @@ def person_detail(request, person_id):
             "person": person,
             "scheduled_events": scheduled_events,
             "can_edit": user_can_edit_person(request.user, person),
+            **ticket_ctx,
         },
     )
 

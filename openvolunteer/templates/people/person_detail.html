@@ -50,7 +50,7 @@
         </div>
       </div>
       <!-- Address -->
-      <div class="card ov-card shadow-sm">
+      <div class="card ov-card shadow-sm mb-4">
         <div class="card-header">Address</div>
         <div class="card-body small">
           {% if person.address_line1 %}
@@ -63,6 +63,17 @@
               {% endif %}
               {{ person.city }}, {{ person.state }} {{ person.postal_code }}
             </address>
+          {% else %}
+            <span class="ov-muted">—</span>
+          {% endif %}
+        </div>
+      </div>
+      <!-- Attributes -->
+      <div class="card ov-card shadow-sm mb-4">
+        <div class="card-header">Attributes</div>
+        <div class="card-body">
+          {% if person.attributes %}
+            <pre class="mb-0">{{ person.attributes }}</pre>
           {% else %}
             <span class="ov-muted">—</span>
           {% endif %}
@@ -94,17 +105,10 @@
           {% endif %}
         </div>
       </div>
-      <!-- Attributes -->
-      <div class="card ov-card shadow-sm mb-4">
-        <div class="card-header">Attributes</div>
-        <div class="card-body">
-          {% if person.attributes %}
-            <pre class="mb-0">{{ person.attributes }}</pre>
-          {% else %}
-            <span class="ov-muted">—</span>
-          {% endif %}
-        </div>
-      </div>
+      <!-- Tickets -->
+      {% with tickets=tickets title="Related Tickets" ticket_count=ticket_count show_claim=True claim_querystring=claim_querystring empty_message="No open tickets for this Person." %}
+        {% include "components/ticket_list_card.html" %}
+      {% endwith %}
       <!-- Activity -->
       <div class="card shadow-sm mt-4">
         <div class="card-header">Scheduled Events</div>
