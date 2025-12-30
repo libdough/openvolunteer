@@ -37,6 +37,7 @@ def get_filtered_tickets(  # noqa: PLR0913
         qs = qs.filter(status=status)
     if exclude_statuses:
         qs = qs.exclude(status__in=exclude_statuses)
+        claim_qs["exclude_statuses"] = ",".join(exclude_statuses)
     if claimed_by:
         qs = qs.filter(assigned_to=claimed_by)
 
