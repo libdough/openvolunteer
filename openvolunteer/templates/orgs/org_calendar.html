@@ -14,7 +14,7 @@
     {% endif %}
   </div>
   <div class="calendar"
-       data-events-url="{% url 'orgs:org_calendar_events' slug=org.slug %}"
+       data-events-url="{% url 'events:calendar' %}"
        data-can-edit="{{ can_manage_events|yesno:'true,false' }}"
        data-create-url="{% url 'events:event_create' %}"
        data-org-id="{{ org.id }}"></div>

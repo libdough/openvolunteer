@@ -7,17 +7,14 @@ from django.db.models import Q
 from django.db.models import Value
 from django.db.models import When
 from django.http import Http404
-from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
 from django.shortcuts import redirect
 from django.shortcuts import render
-from django.urls import reverse
 
 from openvolunteer.core.filters import apply_filters
 from openvolunteer.core.pagination import paginate
 from openvolunteer.events.models import Event
 from openvolunteer.events.models import EventStatus
-from openvolunteer.events.models import Shift
 from openvolunteer.events.permissions import user_can_manage_events
 from openvolunteer.people.models import PersonOrganization
 from openvolunteer.tickets.models import TicketStatus
@@ -351,65 +348,6 @@ def org_people(request, slug):
             **filter_ctx,
         },
     )
-
-
-@login_required
-def org_calendar_events(request, slug):
-    org = get_object_or_404(Organization, slug=slug)
-
-    if not user_can_view_org(request.user, org):
-        raise Http404
-
-    # ---- EVENTS ----
-    events_qs = Event.objects.filter(org=org)
-
-    if not user_can_manage_events(request.user, org=org):
-        events_qs = events_qs.filter(event_status=EventStatus.SCHEDULED)
-
-    data = []
-
-    data.extend(
-        [
-            {
-                "id": f"events:{e.id}",
-                "title": e.title,
-                "start": e.starts_at.isoformat(),
-                "end": e.ends_at.isoformat(),
-                "url": reverse("events:event_detail", args=[e.id]),
-                "editable": user_can_manage_events(request.user, event=e),
-                "extendedProps": {
-                    "type": "event",
-                    "status": e.event_status,
-                },
-            }
-            for e in events_qs
-        ],
-    )
-
-    # ---- SHIFTS ----
-    shifts = Shift.objects.filter(
-        event__org=org,
-        is_hidden=False,
-    ).select_related("event")
-
-    data.extend(
-        [
-            {
-                "id": f"shifts:{s.id}",
-                "title": f"{s.event.title}: {s.name}",
-                "start": s.starts_at.isoformat(),
-                "end": s.ends_at.isoformat(),
-                "url": reverse("events:event_detail", args=[s.event_id]),
-                "extendedProps": {
-                    "type": "shift",
-                    "status": s.event.event_status,
-                },
-            }
-            for s in shifts
-        ],
-    )
-
-    return JsonResponse(data, safe=False)
 
 
 @login_required

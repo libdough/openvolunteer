@@ -10,12 +10,14 @@ from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
 from django.shortcuts import redirect
 from django.shortcuts import render
+from django.urls import reverse
 from django.utils.dateparse import parse_datetime
 from django.views.decorators.http import require_POST
 
 from openvolunteer.core.filters import apply_filters
 from openvolunteer.core.pagination import paginate
 from openvolunteer.orgs.models import Organization
+from openvolunteer.orgs.permissions import user_can_view_org
 from openvolunteer.people.models import Person
 from openvolunteer.tickets.models import TicketStatus
 from openvolunteer.tickets.queryset import get_filtered_tickets
@@ -350,3 +352,67 @@ def shift_assign_people(request, shift_id):
             "org_id": shift.event.org_id,
         },
     )
+
+
+@login_required
+def calendar_events(request):
+    user = request.user
+    org_id = request.GET.get("org")
+
+    # Determine orgs user can view
+    orgs_qs = Organization.objects.filter(
+        memberships__user=user,
+    ).distinct()
+
+    if org_id:
+        orgs_qs = orgs_qs.filter(id=org_id)
+
+    data = []
+
+    # -------- EVENTS --------
+    events_qs = Event.objects.filter(org__in=orgs_qs)
+
+    data.extend(
+        [
+            {
+                "id": f"events:{event.id}",
+                "title": f"{event.title} ({event.org.name})",
+                "start": event.starts_at.isoformat(),
+                "end": event.ends_at.isoformat(),
+                "url": reverse("events:event_detail", args=[event.id]),
+                "editable": user_can_manage_events(user, event=event),
+                "extendedProps": {
+                    "type": "event",
+                    "status": event.event_status,
+                },
+            }
+            for event in events_qs.select_related("org")
+        ],
+    )
+
+    # -------- SHIFTS --------
+    shifts = Shift.objects.filter(
+        event__org__in=orgs_qs,
+        is_hidden=False,
+    ).select_related("event", "event__org")
+
+    for shift in shifts:
+        if not user_can_view_org(user, shift.event.org):
+            continue
+
+        data.append(
+            {
+                "id": f"shifts:{shift.id}",
+                "title": f"{shift.event.title}: {shift.name}",
+                "start": shift.starts_at.isoformat(),
+                "end": shift.ends_at.isoformat(),
+                "url": reverse("events:event_detail", args=[shift.event_id]),
+                "editable": user_can_manage_events(user, event=shift.event),
+                "extendedProps": {
+                    "type": "shift",
+                    "status": shift.event.event_status,
+                },
+            },
+        )
+
+    return JsonResponse(data, safe=False)

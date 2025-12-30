@@ -2,6 +2,7 @@ import '../sass/project.scss';
 
 /* Project specific Javascript goes here. */
 
+/* Copy Component */
 document.addEventListener('click', function (e) {
   const btn = e.target.closest('.copy-btn');
   if (!btn) return;

@@ -87,6 +87,7 @@ THIRD_PARTY_APPS = [
 ]
 
 LOCAL_APPS = [
+    "openvolunteer.core",
     "openvolunteer.users",
     "openvolunteer.orgs",
     "openvolunteer.people",

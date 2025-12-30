@@ -27,9 +27,4 @@ urlpatterns = [
         views.org_calendar,
         name="org_calendar",
     ),
-    path(
-        "<slug:slug>/calendar/events/",
-        views.org_calendar_events,
-        name="org_calendar_events",
-    ),
 ]

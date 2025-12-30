@@ -19,4 +19,10 @@ urlpatterns = [
         views.event_update_times,
         name="event_update_times",
     ),
+    # Calendars
+    path(
+        "calendar/",
+        views.calendar_events,
+        name="calendar",
+    ),
 ]

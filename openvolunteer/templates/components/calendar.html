@@ -1,6 +1,4 @@
-<link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.css"
-      rel="stylesheet" />
-<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
+<script src=" https://cdn.jsdelivr.net/npm/fullcalendar@6.1.20/index.global.min.js "></script>
 <script>
   (function() {
     /* ===============================
@@ -69,7 +67,7 @@
       const isMini = el.classList.contains("mini-calendar");
       const canEdit = el.dataset.canEdit === "true";
       const createUrl = el.dataset.createUrl;
-      const orgId = el.dataset.orgId;
+      const orgId = el.dataset.orgId || null;
 
       return new FullCalendar.Calendar(el, {
         initialView: "dayGridMonth",
@@ -113,7 +111,17 @@
         snapDuration: "00:15:00",
         slotLabelInterval: "01:00",
 
-        events: el.dataset.eventsUrl,
+        events(info, successCallback, failureCallback) {
+          const params = new URLSearchParams();
+          if (orgId) {
+            params.append("org", orgId);
+          }
+
+          fetch(`${el.dataset.eventsUrl}?${params}`)
+            .then(r => r.json())
+            .then(successCallback)
+            .catch(failureCallback);
+        },
 
         eventDrop: updateEventTimes,
         eventResize: updateEventTimes,
