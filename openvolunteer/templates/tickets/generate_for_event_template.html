@@ -38,7 +38,7 @@
         <div class="card shadow-sm mb-4">
           <div class="card-header">Select People</div>
           <div class="card-body">
-            {% with selected_people=form.people.value event_id=event.id org_id=.org.id placeholder="Search people to generate tickets for…" allow_add_all=True %}
+            {% with selected_people=form.people.value event_id=event.id org_id=.org.id placeholder="Search people to generate tickets for…" allow_add_all=True add_all_text="Select all assignees" %}
               {% person_selector %}
             {% endwith %}
             <div class="form-text mt-2">

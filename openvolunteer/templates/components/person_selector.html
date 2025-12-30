@@ -16,7 +16,7 @@
         data-event-id="{{ event.id|default:'' }}"
         data-shift-id="{{ shift.id|default:'' }}"
       >
-        Add all matching people
+        {{ add_all_text|default:"Add all matching people" }}
       </button>
     {% endif %}
   </div>
