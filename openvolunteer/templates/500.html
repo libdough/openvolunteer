@@ -1,12 +1,29 @@
 {% extends "base.html" %}
 
 {% block title %}
-  Server Error
+  Server error
 {% endblock title %}
 {% block content %}
-  <h1>Ooops!!! 500</h1>
-  <h3>Looks like something went wrong!</h3>
-  <p>
-    We track these errors automatically, but if the problem persists feel free to contact us. In the meantime, try refreshing.
-  </p>
+  <div class="container py-4">
+    <div class="row">
+      <div class="col-lg-8">
+        <div class="align-items-center mb-3 text-danger">
+          <i class="bi bi-exclamation-octagon fs-3 text-muted me-2"></i>
+          <h1 class="h4 mb-0">Something went wrong</h1>
+          <small>(500 Internal Server Error)</small>
+        </div>
+        <p class="text-muted">An unexpected error occurred while processing your request.</p>
+        <p class="text-muted">
+          We track these errors automatically. If the problem persists,
+          try refreshing the page or return to the dashboard.
+        </p>
+        <div class="d-flex gap-2 mt-3">
+          <a href="" class="btn btn-primary">Reload page</a>
+          <a href="{% url 'core:home' %}" class="btn btn-outline-secondary">Go to dashboard</a>
+        </div>
+        <p class="small text-muted mt-4">If you contact support, mention what you were doing when this occurred.</p>
+        {% if exception and debug %}<p class="text-muted small">{{ traceback }}</p>{% endif %}
+      </div>
+    </div>
+  </div>
 {% endblock content %}

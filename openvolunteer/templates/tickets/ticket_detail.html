@@ -13,7 +13,7 @@
     <div>
       {% if can_claim and ticket.assigned_to != request.user %}
         <a href="{% url 'tickets:claim_ticket' ticket.id %}"
-           class="btn btn-sm btn-outline-primary">Claim ticket</a>
+           class="btn btn-sm btn-primary">Claim ticket</a>
       {% endif %}
       {% if can_unclaim %}
         <a href="{% url 'tickets:unclaim_ticket' ticket.id %}"

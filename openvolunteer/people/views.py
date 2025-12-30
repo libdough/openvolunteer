@@ -4,7 +4,6 @@ from django.contrib.auth.decorators import login_required
 from django.core.exceptions import BadRequest
 from django.core.exceptions import PermissionDenied
 from django.db.models import Q
-from django.http import Http404
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
 from django.shortcuts import redirect
@@ -38,7 +37,8 @@ def person_list(request):
     # Non-admin users only see people in their orgs
     if not (request.user.is_staff or request.user.is_superuser):
         people = people.filter(
-            org__in=orgs_for_user(request.user),
+            org_links__org__in=orgs_for_user(request.user),
+            org_links__is_active=True,
         )
 
     people = people.distinct().order_by("full_name")
@@ -66,7 +66,8 @@ def person_detail(request, person_id):
     person = get_object_or_404(Person, id=person_id)
 
     if not user_can_view_person(request.user, person):
-        raise Http404
+        msg = "You do not have permission to view this person."
+        raise PermissionDenied(msg)
 
     scheduled_events = (
         Event.objects.filter(
@@ -111,7 +112,8 @@ def person_form(request, person_id=None):
         person = get_object_or_404(Person, id=person_id)
 
         if not user_can_edit_person(request.user, person):
-            raise Http404
+            msg = "You do not have permission to edit this person."
+            raise PermissionDenied(msg)
 
     if request.method == "POST":
         form = PersonForm(
@@ -165,7 +167,8 @@ def person_form(request, person_id=None):
 @login_required
 def person_upload_csv(request):
     if not user_can_create_person(request.user):
-        raise Http404
+        msg = "You do not have permission to create new people."
+        raise PermissionDenied(msg)
 
     if request.method == "POST":
         form = PersonCSVUploadForm(request.POST, request.FILES)

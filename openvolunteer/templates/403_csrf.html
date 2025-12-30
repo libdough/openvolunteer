@@ -1,15 +1,32 @@
 {% extends "base.html" %}
 
 {% block title %}
-  Forbidden (403)
+  Security check failed
 {% endblock title %}
 {% block content %}
-  <h1>Forbidden (403)</h1>
-  <p>
-    {% if exception %}
-      {{ exception }}
-    {% else %}
-      You're not allowed to access this page.
-    {% endif %}
-  </p>
+  <div class="container py-4">
+    <div class="row">
+      <div class="col-lg-8">
+        <div class="d-flex align-items-center mb-3">
+          <i class="bi bi-shield-exclamation fs-3 text-muted me-2"></i>
+          <h1 class="h4 mb-0">Security check failed</h1>
+        </div>
+        <p class="text-muted">
+          {% if exception %}
+            {{ exception }}
+          {% else %}
+            Your session could not be verified. This usually happens if the page
+            was open for a long time or refreshed incorrectly.
+          {% endif %}
+        </p>
+        <div class="d-flex gap-2 mt-3">
+          <a href="" class="btn btn-primary">Reload page</a>
+          <a href="{% url 'core:home' %}" class="btn btn-outline-secondary">Go to dashboard</a>
+        </div>
+        <p class="small text-muted mt-4">
+          If this keeps happening, try refreshing the page before submitting the form. You may also try logging out and back in.
+        </p>
+      </div>
+    </div>
+  </div>
 {% endblock content %}
