@@ -37,6 +37,26 @@ def filter_assignment(qs, request, value):
     return qs
 
 
+def filter_exclude_statuses(qs, request, value):
+    """
+    Exclude orgs filter:
+    - value: comma-separated list of statuses (e.g. "open,closed")
+    """
+    if not value:
+        return qs
+
+    if isinstance(value, str):
+        statuses = [v for v in value.split(",") if v.strip()]
+    else:
+        # Defensively ignore bad value
+        return qs
+
+    if not statuses:
+        return qs
+
+    return qs.exclude(status__in=statuses)
+
+
 TICKET_FILTERS = [
     {
         "name": "q",
@@ -50,6 +70,12 @@ TICKET_FILTERS = [
         "type": "select",
         "choices": TicketStatus.choices,
         "lookup": "status",
+    },
+    {
+        "name": "exclude_statuses",
+        "label": "",
+        "type": "hidden",
+        "filter": filter_exclude_statuses,
     },
     {
         "name": "priority",
