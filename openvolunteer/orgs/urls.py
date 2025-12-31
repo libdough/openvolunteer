@@ -11,11 +11,6 @@ urlpatterns = [
     path("<slug:slug>/edit/", views.org_edit, name="org_edit"),
     path("<slug:slug>/members/", views.org_members, name="org_members"),
     path(
-        "<slug:slug>/members/<uuid:member_id>/update/",
-        views.org_member_update,
-        name="org_member_update",
-    ),
-    path(
         "<slug:slug>/members/<uuid:member_id>/remove/",
         views.org_member_remove,
         name="org_member_remove",

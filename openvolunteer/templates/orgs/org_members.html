@@ -55,12 +55,16 @@
               <td>{{ member.user.username }}</td>
               <td>{{ member.user.email }}</td>
               <td>
-                <form method="post"
-                      action="{% url 'orgs:org_member_update' slug=org.slug member_id=member.id %}">
+                <form method="post" action="{% url 'orgs:org_members' slug=org.slug %}">
                   {% csrf_token %}
+                  <input type="hidden" name="user_id" value="{{ member.user.id }}" />
                   <select name="role"
                           class="form-select form-select-sm"
-                          onchange="this.form.submit()">
+                          onchange="this.form.submit()"
+                          {% if member.role not in role_values %}disabled{% endif %}>
+                    {% if member.role not in role_values %}
+                      <option value="{{ member.role }}" disabled selected>{{ member.role }}</option>
+                    {% endif %}
                     {% for value, label in role_choices %}
                       <option value="{{ value }}"{% if member.role == value %} selected{% endif %}>{{ label }}</option>
                     {% endfor %}
