@@ -20,13 +20,11 @@ from openvolunteer.events.permissions import user_can_manage_events
 from openvolunteer.people.models import PersonOrganization
 from openvolunteer.tickets.models import TicketStatus
 from openvolunteer.tickets.queryset import get_filtered_tickets
-from openvolunteer.users.models import User
 
 from .filters import MEMBERSHIP_FILTERS
 from .filters import PERSON_ORG_FILTERS
-from .forms import AddMemberForm
+from .forms import AddUserToOrgForm
 from .forms import OrganizationForm
-from .forms import UpdateMemberRoleForm
 from .models import Membership
 from .models import Organization
 from .models import OrgRole
@@ -34,6 +32,7 @@ from .permissions import user_can_create_org
 from .permissions import user_can_edit_org
 from .permissions import user_can_manage_members
 from .permissions import user_can_manage_people
+from .permissions import user_can_set_role
 from .permissions import user_can_view_org
 from .queryset import orgs_for_user
 
@@ -225,29 +224,49 @@ def org_members(request, slug):
         msg = "You do not have permission to manage members of this org."
         raise PermissionDenied(msg)
 
-    members = org.memberships.select_related("user").order_by("role")
+    members = org.memberships.select_related("user").order_by("-created_at")
 
     if request.method == "POST":
-        form = AddMemberForm(request.POST)
+        form = AddUserToOrgForm(request.POST)
         if form.is_valid():
-            user = User.objects.get(id=form.cleaned_data["user_id"])
+            # Verify that requesting user can change target's org role
+            target_user = form.user
+            new_role = form.cleaned_data["role"]
+            existing = Membership.objects.filter(
+                org=org,
+                user=target_user,
+            ).first()
+            old_role = existing.role if existing else None
+            if not user_can_set_role(
+                request.user,
+                org,
+                new_role,
+                old_role,
+            ):
+                msg = f"You cannot assign {new_role} to this user."
+                raise PermissionDenied(msg)
+
             Membership.objects.update_or_create(
                 org=org,
-                user=user,
+                user=target_user,
                 defaults={
-                    "role": form.cleaned_data["role"],
+                    "role": new_role,
                     "is_active": True,
                 },
             )
+
             return redirect("orgs:org_members", slug=slug)
-        raise ValueError(form.errors)
-    form = AddMemberForm()
+    else:
+        form = AddUserToOrgForm()
 
     members, filter_ctx = apply_filters(request, members, MEMBERSHIP_FILTERS)
     pagination = paginate(request, members, per_page=20)
 
-    role_choices = OrgRole.choices
-
+    choices = [
+        (value, label)
+        for value, label in OrgRole.choices
+        if user_can_set_role(request.user, org, value)
+    ]
     return render(
         request,
         "orgs/org_members.html",
@@ -256,27 +275,11 @@ def org_members(request, slug):
             "members": pagination["page_obj"],
             **pagination,
             **filter_ctx,
-            "role_choices": role_choices,
             "form": form,
+            "role_choices": choices,
+            "role_values": [value for value, _ in choices],
         },
     )
-
-
-@login_required
-def org_member_update(request, slug, member_id):
-    org = get_object_or_404(Organization, slug=slug)
-    member = get_object_or_404(Membership, id=member_id, org=org)
-
-    if not user_can_manage_members(request.user, org):
-        msg = "You do not have permission to update roles for this org."
-        raise PermissionDenied(msg)
-
-    if request.method == "POST":
-        form = UpdateMemberRoleForm(request.POST, instance=member)
-        if form.is_valid():
-            form.save()
-
-    return redirect("orgs:org_members", slug=slug)
 
 
 @login_required
@@ -284,9 +287,8 @@ def org_member_remove(request, slug, member_id):
     org = get_object_or_404(Organization, slug=slug)
     member = get_object_or_404(Membership, id=member_id, org=org)
 
-    # You cannot ever remove org owners through this view
-    if not user_can_manage_members(request.user, org) or member.role == OrgRole.OWNER:
-        msg = "You do not have permission to remove this member."
+    if not user_can_set_role(request.user, org, None, member.role):
+        msg = "You can not remove this user"
         raise PermissionDenied(msg)
 
     if request.method == "POST":
