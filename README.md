@@ -2,28 +2,104 @@
 
 Volunteer organizational software
 
-[![Built with Cookiecutter Django](https://img.shields.io/badge/built%20with-Cookiecutter%20Django-ff69b4.svg?logo=cookiecutter)](https://github.com/cookiecutter/cookiecutter-django/)
-[![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
-
 License: BSD
 
-## Settings
+## What is this?
 
-Moved to [settings](https://cookiecutter-django.readthedocs.io/en/latest/1-getting-started/settings.html).
+Open Volunteer allows organizations to track and assign volunteers to activities and manage the lifecycle of these same volunteers.
+
+For example, here's a view of a phone banking event managed in the UI. Notice how you can track the status of assignees (Confirmed, declined, etc). You also have tickets which can be assigned to particular events:
+
+![View of a phonebanking event](./docs/event-view.png)
+
+Tickets will help users to complete important outreach tasks and track outreach to volunteers:
+
+![View of a introduction ticket](./docs/ticket-view.png)
+
+The idea is that we can assign tickets to users, who will work through these tickets to accomplish auditable and real goals:
+
+![View of a home page](./docs/home-view.png)
 
 ## Basic Commands
+
+All local development requires `docker` to run locally.
+
+### Setting up local stack
+
+To start the local dev environment, first run:
+
+```
+docker compose -f docker-compose.local.yml up
+```
+
+This brings up all the containers required for local development:
+
+1. Django
+2. Postgres
+3. Celery
+4. Redis
+5. Node
+6. etc etc
 
 ### Setting Up Your Users
 
 - To create a **normal user account**, just go to Sign Up and fill out the form. Once you submit it, you'll see a "Verify Your E-mail Address" page. Go to your console to see a simulated email verification message. Copy the link into your browser. Now the user's email should be verified and ready to go.
 
+```
+$ docker logs openvolunteer_local_django
+...
+To: libdough@destiny.gg
+Date: Wed, 31 Dec 2025 04:50:52 -0000
+Message-ID: <176715665223.25.4790457677486040098@3ed59bd90a5c>
+
+Hello from Open Volunteer!
+
+You're receiving this email because user libdough has given your email address to register an account on example.com.
+
+To confirm this is correct, go to http://localhost:3000/accounts/confirm-email/Mg:1vaoAe:aqYqcasuNQti1rFVLkKfMwpJRCFX12Joepn-HiZPRjU/
+```
+
+Copying this link into the browser will create the user
+
 - To create a **superuser account**, use this command:
 
-      uv run python manage.py createsuperuser
+```
+docker compose -f docker-compose.local.yml run --rm django python manage.py createsuperuser
+```
 
 For convenience, you can keep your normal user logged in on Chrome and your superuser logged in on Firefox (or similar), so that you can see how the site behaves for both kinds of users.
 
-### Type checks
+### DB Migrations
+
+Any change to a models.py file will require creating new DB migrations
+
+```
+docker compose -f docker-compose.local.yml run --rm django python manage.py makemigrations
+```
+
+The above will create the relevant migration files for all modules in this repository. To actually run the migrations, use the following:
+
+```
+docker compose -f docker-compose.local.yml run --rm django python manage.py migrate
+```
+
+Assuming that
+
+### Reset local dev
+
+If you need to, it might be useful to reset the local dev environment:
+
+```
+docker compose -f docker-compose.local.yml down -v
+```
+
+This will drop all volumes and reset everything. This allows you to start completely from scratch
+
+### Run unit tests
+
+> TODO: Implement docs for unit tests
+
+<!-- ### Type checks
 
 Running type checks with mypy:
 
@@ -45,53 +121,4 @@ To run the tests, check your test coverage, and generate an HTML coverage report
 
 Moved to [Live reloading and SASS compilation](https://cookiecutter-django.readthedocs.io/en/latest/2-local-development/developing-locally.html#using-webpack-or-gulp).
 
-### Celery
-
-This app comes with Celery.
-
-To run a celery worker:
-
-```bash
-cd openvolunteer
-uv run celery -A config.celery_app worker -l info
-```
-
-Please note: For Celery's import magic to work, it is important _where_ the celery commands are run. If you are in the same folder with _manage.py_, you should be right.
-
-To run [periodic tasks](https://docs.celeryq.dev/en/stable/userguide/periodic-tasks.html), you'll need to start the celery beat scheduler service. You can start it as a standalone process:
-
-```bash
-cd openvolunteer
-uv run celery -A config.celery_app beat
-```
-
-or you can embed the beat service inside a worker with the `-B` option (not recommended for production use):
-
-```bash
-cd openvolunteer
-uv run celery -A config.celery_app worker -B -l info
-```
-
-### Sentry
-
-Sentry is an error logging aggregator service. You can sign up for a free account at <https://sentry.io/signup/?code=cookiecutter> or download and host it yourself.
-The system is set up with reasonable defaults, including 404 logging and integration with the WSGI application.
-
-You must set the DSN url in production.
-
-## Deployment
-
-The following details how to deploy this application.
-
-### Docker
-
-See detailed [cookiecutter-django Docker documentation](https://cookiecutter-django.readthedocs.io/en/latest/2-local-development/developing-locally-docker.html).
-
-### Custom Bootstrap Compilation
-
-The generated CSS is set up with automatic Bootstrap recompilation with variables of your choice.
-Bootstrap v5 is installed using npm and customised by tweaking your variables in `static/sass/custom_bootstrap_vars`.
-
-You can find a list of available variables [in the bootstrap source](https://github.com/twbs/bootstrap/blob/v5.1.3/scss/_variables.scss), or get explanations on them in the [Bootstrap docs](https://getbootstrap.com/docs/5.1/customize/sass/).
-
-Bootstrap's javascript as well as its dependencies are concatenated into a single file: `static/js/vendors.js`.
+ -->
