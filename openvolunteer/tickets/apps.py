@@ -13,6 +13,7 @@ class TicketsConfig(AppConfig):
         # Make sure recievers are registered
 
         # Register on ticket create reciever
+        from .actions import signals  # noqa: F401
         from .defaults import install_default_event_templates
         from .defaults import install_default_tasks
         from .defaults import install_default_ticket_actions
