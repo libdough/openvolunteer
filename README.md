@@ -140,6 +140,7 @@ There are a few important modules that are defined inside [/openvolunter/](openv
 4. [tickets](openvolunteer/tickets/)
    - For each org, we will create tickets (i.e. tasks) that users can claim to accomplish specific goals.
    - For example, we might create tickets to recruit contacts to participate in up coming event. Or, we can create tickets to track progress on securing specific venues. Etc etc.
+   - This module also includes `Actions` which are automations associated with tickets to make managing contacts easier.
 5. [users](openvolunteer/users/)
    - Authenticated accounts which have access to openvolunteer
    - Distinct from contacts, these users have elevated positions in your organization and are responsible for all outreach and decision making.
