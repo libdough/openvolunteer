@@ -122,3 +122,59 @@ To run the tests, check your test coverage, and generate an HTML coverage report
 Moved to [Live reloading and SASS compilation](https://cookiecutter-django.readthedocs.io/en/latest/2-local-development/developing-locally.html#using-webpack-or-gulp).
 
  -->
+
+## Navigating this repo
+
+There are several concepts you should understand when you try making changes/understanding how this code base works.
+
+### Modules
+
+There are a few important modules that are defined inside [/openvolunter/](openvolunteer/) directory.
+
+1. [people](openvolunteer/people/)
+   - Handles all the people and contacts that we are managing
+2. [events](openvolunteer/events/)
+   - Handles events and activities that we create (Canvassing, phone banking, etc etc)
+3. [orgs](openvolunteer/orgs/)
+   - Tenant based system for grouping people, events, etc into specific actionable organizations. Users will be granted roles to control what actions and permissions they have within the group
+4. [tickets](openvolunteer/tickets/)
+   - For each org, we will create tickets (i.e. tasks) that users can claim to accomplish specific goals.
+   - For example, we might create tickets to recruit contacts to participate in up coming event. Or, we can create tickets to track progress on securing specific venues. Etc etc.
+5. [users](openvolunteer/users/)
+   - Authenticated accounts which have access to openvolunteer
+   - Distinct from contacts, these users have elevated positions in your organization and are responsible for all outreach and decision making.
+
+There is also [templates in openvolunteer/](openvolunteer/templates/) which currently has all the frontend elements used in the UI.
+
+### Common Files
+
+There are a few common files you should be aware of. In no particular order:
+
+1. models.py
+   - Holds all the DB files that the module uses.
+2. migrations/
+   - Directory which contains all the needed DB migrations a module requires (i.e. creating new tables/columns/etc)
+3. apps.py
+   - Defines the module as is imported by Django to reference a modules features
+4. admin.py
+   - Defines all the admin UI in the `http://localhost:3000/admin` pages
+   - Very useful for maintance and debugging
+5. views.py
+   - Controls all the UI renderings, API forms, etc
+   - The way most business logic will be exposed to users
+6. filters.py
+   - For some views, there will be filters exposed in the UI (e.g. filter by event)
+   - These define a programtic set of filters that are rendered in the UI and utilized in the backend to accomplish filterings
+7. permissions.py
+   - All permissions are defined as helper functions in these folders
+   - Typically, permissions will take the user and the relevant org. Retrieving the user's role in the org is the main method by which Authz is determined.
+8. forms.py
+   - All API forms are defined in these files. These tell Django about the request schemas used for modifying/retrieving data in the DB.
+9. tasks.py
+   - Django utilizes [Celery](https://docs.celeryq.dev/en/main/getting-started/introduction.html) as a task queue
+   - These files define the tasks exposed to Celery to run periodically
+   - Actually scheduling tasks requires utilizing the Admin pages
+10. services.py
+    - Some modules requires specialized services (i.e. running actions like updating a person's tags)
+
+There are a few other files I've utilized in this repo (i.e. queryset.py or tests.py), but the above are the main ones you will find interesting and relevant.
